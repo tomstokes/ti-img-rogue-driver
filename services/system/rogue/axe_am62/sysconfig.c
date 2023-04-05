@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 
+#include "sysinfo.h"
 #include "img_defs.h"
 #include "physheap.h"
 #include "pvrsrv.h"
@@ -225,7 +226,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 
 	/* Setup the device config */
 	gsDevice.pvOSDevice                         = pvOSDevice;
-	gsDevice.pszName                            = "axe_am62";
+	gsDevice.pszName                            = SYS_RGX_DEV_NAME;
 	gsDevice.pszVersion                         = NULL;
 
 	/* Device setup information */

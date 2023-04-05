@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 
+#include "sysinfo.h"
 #include "img_defs.h"
 #include "physheap.h"
 #include "pvrsrv.h"
@@ -55,11 +56,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "interrupt_support.h"
 
 #define SYS_RGX_ACTIVE_POWER_LATENCY_MS 100
-#define RGX_J721E_CORE_CLOCK_SPEED 100000000
+#define RGX_HW_CORE_CLOCK_SPEED 100000000
 
 /* Setup RGX specific timing data */
 static RGX_TIMING_INFORMATION gsRGXTimingInfo = {
-	.ui32CoreClockSpeed = RGX_J721E_CORE_CLOCK_SPEED,
+	.ui32CoreClockSpeed = RGX_HW_CORE_CLOCK_SPEED,
 	.bEnableActivePM = IMG_FALSE,
 	.ui32ActivePMLatencyms = SYS_RGX_ACTIVE_POWER_LATENCY_MS,
 	.bEnableRDPowIsland = IMG_FALSE,
@@ -213,7 +214,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 
 	/* Setup the device config */
 	gsDevice.pvOSDevice                         = pvOSDevice;
-	gsDevice.pszName                            = "rgx_j721e";
+	gsDevice.pszName                            = SYS_RGX_DEV_NAME;
 	gsDevice.pszVersion                         = NULL;
 
 	/* Device setup information */

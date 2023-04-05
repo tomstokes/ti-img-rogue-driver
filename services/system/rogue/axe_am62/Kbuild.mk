@@ -40,8 +40,8 @@
 ### ###########################################################################
 PVRSRVKM_NAME = $(PVRSRV_MODNAME)
 
-$(PVRSRVKM_NAME)-y += services/system/rogue/$(PVR_SYSTEM)/sysconfig.o \
- services/system/common/sysconfig_cmn.o \
+$(PVRSRVKM_NAME)-y += \
+ services/system/rogue/$(PVR_SYSTEM)/sysconfig.o \
  services/server/common/vmm_pvz_client.o \
  services/server/common/vmm_pvz_server.o \
  services/server/common/vz_vmm_pvz.o \
