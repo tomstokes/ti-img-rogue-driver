@@ -248,6 +248,9 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	/* clock frequency */
 	gsDevice.pfnClockFreqGet        = NULL;
 
+	/* Set gsDevice.pfnSysDevErrorNotify callback */
+	gsDevice.pfnSysDevErrorNotify = SysRGXErrorNotify;
+
 	/* power management on HW system */
 	gsDevice.pfnPrePowerState = SysDevPrePowerState;
 	gsDevice.pfnPostPowerState = SysDevPostPowerState;
