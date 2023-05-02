@@ -133,6 +133,7 @@ static PHYS_HEAP_CONFIG gsPhysHeapConfig = {
 
 static void SysDevPowerDomainsDeinit(struct device *dev)
 {
+	pm_runtime_disable(dev);
 	dev_pm_domain_detach(dev, false);
 }
 
@@ -146,6 +147,7 @@ static int SysDevPowerDomainsInit(struct device *dev)
 		err = PTR_ERR(dev);
 		dev_err(dev, "failed to get pm-domain: %d\n", err);
 	}
+	pm_runtime_enable(dev);
 
 	return err;
 }
@@ -258,7 +260,6 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	*ppsDevConfig = &gsDevice;
 
 	SysDevPowerDomainsInit(&psDev->dev);
-	pm_runtime_enable(&psDev->dev);
 	return PVRSRV_OK;
 }
 
