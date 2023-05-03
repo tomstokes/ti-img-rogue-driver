@@ -61,9 +61,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* Setup RGX specific timing data */
 static RGX_TIMING_INFORMATION gsRGXTimingInfo = {
 	.ui32CoreClockSpeed = RGX_HW_CORE_CLOCK_SPEED,
-	.bEnableActivePM = IMG_FALSE,
+	.bEnableActivePM = IMG_TRUE,
 	.ui32ActivePMLatencyms = SYS_RGX_ACTIVE_POWER_LATENCY_MS,
-	.bEnableRDPowIsland = IMG_FALSE,
+	.bEnableRDPowIsland = IMG_TRUE,
 };
 
 static RGX_DATA gsRGXData = {
@@ -133,64 +133,69 @@ static PHYS_HEAP_CONFIG gsPhysHeapConfig = {
 
 static void SysDevPowerDomainsDeinit(struct device *dev)
 {
-	struct device_link *link;
-
-	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
-
-	list_for_each_entry(link, &dev->links.consumers, s_node)
-		device_link_del(link);
+	dev_pm_domain_detach(dev, false);
 }
 
 static int SysDevPowerDomainsInit(struct device *dev)
 {
-	int err;
-	struct device *gpu_0, *gpucore_0;
-	struct device_link *gpu_0_dl, *gpucore_0_dl;
+	int err = 0;
 
-	gpu_0 = dev_pm_domain_attach_by_name(dev, "gpu_0");
-	if (IS_ERR(gpu_0))
+	err = dev_pm_domain_attach(dev, false);
+	if (err)
 	{
-		err = PTR_ERR(gpu_0);
-		dev_err(dev, "failed to get gpu_0 pm-domain: %d\n", err);
-		return err;
+		err = PTR_ERR(dev);
+		dev_err(dev, "failed to get pm-domain: %d\n", err);
 	}
-
-	gpucore_0 = dev_pm_domain_attach_by_name(dev, "gpucore_0");
-	if (IS_ERR(gpucore_0))
-	{
-		err = PTR_ERR(gpucore_0);
-		dev_err(dev, "failed to get gpucore_0 pm-domain: %d\n", err);
-		return err;
-	}
-
-	gpu_0_dl = device_link_add(dev, gpu_0,
-					       DL_FLAG_PM_RUNTIME |
-					       DL_FLAG_STATELESS |
-                           DL_FLAG_RPM_ACTIVE);
-	if (!gpu_0_dl)
-	{
-		dev_err(dev, "adding gpu_0 device link failed!\n");
-		return -ENODEV;
-	}
-
-	gpucore_0_dl = device_link_add(dev, gpucore_0,
-					     DL_FLAG_PM_RUNTIME |
-					     DL_FLAG_STATELESS |
-					     DL_FLAG_RPM_ACTIVE);
-	if (!gpucore_0_dl)
-	{
-		dev_err(dev, "adding gpucore_0 device link failed!\n");
-		return -ENODEV;
-	}
-
 	pm_runtime_enable(dev);
-	if (pm_runtime_get_sync(dev) < 0)
-	{
-		PVR_LOG(("%s: failed to enable clock\n", __func__));
+
+	return err;
+}
+
+static PVRSRV_ERROR SysDevPrePowerState(
+		IMG_HANDLE hSysData,
+		PVRSRV_SYS_POWER_STATE eNewPowerState,
+		PVRSRV_SYS_POWER_STATE eCurrentPowerState,
+		PVRSRV_POWER_FLAGS ePwrFlags)
+{
+	struct platform_device *psDev = hSysData;
+
+	if ((PVRSRV_SYS_POWER_STATE_OFF == eNewPowerState) &&
+	    (PVRSRV_SYS_POWER_STATE_ON == eCurrentPowerState)) {
+#if defined(DEBUG)
+		PVR_LOG(("%s: attempting to suspend", __func__));
+#endif
+		if (pm_runtime_put_sync(&psDev->dev))
+			PVR_LOG(("%s: failed to suspend", __func__));
+	}
+	return PVRSRV_OK;
+}
+
+static PVRSRV_ERROR SysDevPostPowerState(
+		IMG_HANDLE hSysData,
+		PVRSRV_SYS_POWER_STATE eNewPowerState,
+		PVRSRV_SYS_POWER_STATE eCurrentPowerState,
+		PVRSRV_POWER_FLAGS ePwrFlags)
+{
+	PVRSRV_ERROR ret;
+	struct platform_device *psDev = hSysData;
+
+	if ((PVRSRV_SYS_POWER_STATE_ON == eNewPowerState) &&
+	    (PVRSRV_SYS_POWER_STATE_OFF == eCurrentPowerState)) {
+#if defined(DEBUG)
+		PVR_LOG(("%s: attempting to resume", __func__));
+#endif
+		if (pm_runtime_get_sync(&psDev->dev)) {
+			PVR_LOG(("%s: failed to resume", __func__));
+			ret = PVRSRV_ERROR_DEVICE_POWER_CHANGE_FAILURE;
+			goto done;
+		}
 	}
 
-	return 0;
+	ret = PVRSRV_OK;
+
+done:
+	return ret;
 }
 
 PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
@@ -239,11 +244,18 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	/* Setup RGX specific timing data */
 	gsDevice.hDevData = &gsRGXData;
 
+	/* device info for power management */
+	gsDevice.hSysData = to_platform_device((struct device *)pvOSDevice);
+
 	/* clock frequency */
 	gsDevice.pfnClockFreqGet        = NULL;
 
 	/* Set gsDevice.pfnSysDevErrorNotify callback */
 	gsDevice.pfnSysDevErrorNotify = SysRGXErrorNotify;
+
+	/* power management on HW system */
+	gsDevice.pfnPrePowerState = SysDevPrePowerState;
+	gsDevice.pfnPostPowerState = SysDevPostPowerState;
 
 	*ppsDevConfig = &gsDevice;
 
@@ -255,7 +267,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 void SysDevDeInit(PVRSRV_DEVICE_CONFIG *psDevConfig)
 {
 	struct platform_device *psDev;
-	psDev = to_platform_device((struct device *)psDevConfig->pvOSDevice);
+	psDev = psDevConfig->hSysData;
 	SysDevPowerDomainsDeinit(&psDev->dev);
 	psDevConfig->pvOSDevice = NULL;
 }
