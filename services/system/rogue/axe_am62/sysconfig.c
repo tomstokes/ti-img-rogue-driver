@@ -2,7 +2,7 @@
 @File           sysconfig.c
 @Title          System Configuration
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@Description    Implements the system layer for TI DRA82x SoC
+@Description    Implements the system layer for TI Keystone3 SoCs
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -165,7 +165,7 @@ static PVRSRV_ERROR SysDevPrePowerState(
 #if defined(DEBUG)
 		PVR_LOG(("%s: attempting to suspend", __func__));
 #endif
-		if (pm_runtime_put_sync(&psDev->dev))
+		if (pm_runtime_put_sync_autosuspend(&psDev->dev))
 			PVR_LOG(("%s: failed to suspend", __func__));
 	}
 	return PVRSRV_OK;
@@ -185,7 +185,7 @@ static PVRSRV_ERROR SysDevPostPowerState(
 #if defined(DEBUG)
 		PVR_LOG(("%s: attempting to resume", __func__));
 #endif
-		if (pm_runtime_get_sync(&psDev->dev)) {
+		if (pm_runtime_resume_and_get(&psDev->dev)) {
 			PVR_LOG(("%s: failed to resume", __func__));
 			ret = PVRSRV_ERROR_DEVICE_POWER_CHANGE_FAILURE;
 			goto done;
@@ -260,6 +260,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	*ppsDevConfig = &gsDevice;
 
 	SysDevPowerDomainsInit(&psDev->dev);
+
 	return PVRSRV_OK;
 }
 
