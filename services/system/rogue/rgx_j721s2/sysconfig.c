@@ -63,7 +63,11 @@ static RGX_TIMING_INFORMATION gsRGXTimingInfo = {
 	.ui32CoreClockSpeed = RGX_HW_CORE_CLOCK_SPEED,
 	.bEnableActivePM = IMG_TRUE,
 	.ui32ActivePMLatencyms = SYS_RGX_ACTIVE_POWER_LATENCY_MS,
-	.bEnableRDPowIsland = IMG_TRUE,
+
+	/* Power Island is enabled but this must be false as the core is not
+	 * informed of power events*/
+
+	.bEnableRDPowIsland = IMG_FALSE,
 };
 
 static RGX_DATA gsRGXData = {
