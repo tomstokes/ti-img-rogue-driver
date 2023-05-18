@@ -87,9 +87,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*
  * dma_buf_ops
  *
- * These are all returning errors if used.
- * The point is to prevent anyone outside of our driver from importing
- * and using our dmabuf.
+ * Implementation of below callbacks adds the ability to export DmaBufs to other
+ * drivers.
  */
 
 static int PVRDmaBufOpsAttach(struct dma_buf *psDmaBuf,
@@ -99,7 +98,18 @@ static int PVRDmaBufOpsAttach(struct dma_buf *psDmaBuf,
 #endif
 							  struct dma_buf_attachment *psAttachment)
 {
-	return -ENOSYS;
+	PMR *psPMR = psDmaBuf->priv;
+
+	if (PMR_GetType(psPMR) == PMR_TYPE_DMABUF)
+	{
+		// don't support exporting PMRs that are itself created from imported
+		// DmaBufs
+		PVR_DPF((PVR_DBG_ERROR, "exporting PMRs of type DMABUF not supported"));
+
+		return -ENOTSUPP;
+	}
+
+	return 0;
 }
 
 static struct sg_table *PVRDmaBufOpsMap(struct dma_buf_attachment *psAttachment,
@@ -131,7 +141,23 @@ static void *PVRDmaBufOpsKMap(struct dma_buf *psDmaBuf, unsigned long uiPageNum)
 
 static int PVRDmaBufOpsMMap(struct dma_buf *psDmaBuf, struct vm_area_struct *psVMA)
 {
-	return -ENOSYS;
+	PMR *psPMR = psDmaBuf->priv;
+	PVRSRV_MEMALLOCFLAGS_T uiProtFlags =
+	    (BITMASK_HAS(psVMA->vm_flags, VM_READ) ? PVRSRV_MEMALLOCFLAG_CPU_READABLE : 0) |
+	    (BITMASK_HAS(psVMA->vm_flags, VM_WRITE) ? PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE : 0);
+	PVRSRV_ERROR eError;
+
+	PVR_DPF((PVR_DBG_MESSAGE, "%s(): psDmaBuf = %px, psPMR = %px", __func__,
+	         psDmaBuf, psPMR));
+
+	eError = PMRMMapPMR(psPMR, psVMA, uiProtFlags);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_LOG_IF_ERROR(eError, "PMRMMapPMR");
+		return OSPVRSRVToNativeError(eError);
+	}
+
+	return 0;
 }
 
 static const struct dma_buf_ops sPVRDmaBufOps =
