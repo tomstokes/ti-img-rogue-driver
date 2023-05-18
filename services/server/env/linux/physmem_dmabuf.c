@@ -53,6 +53,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/dma-buf.h>
+#include <drm/drm_gem.h>
 #include <linux/scatterlist.h>
 
 #include "img_types.h"
@@ -809,6 +810,125 @@ fail_pmr_ref:
 	PMRFactoryUnlock();
 
 	PVR_ASSERT(eError != PVRSRV_OK);
+	return eError;
+}
+
+struct PHYSMEM_GEM_OBJECT {
+	struct drm_gem_object sBase;
+	PMR *psPMR;
+};
+
+static struct dma_buf *
+PhysmemGEMPrimeExport(struct drm_gem_object *psObj,
+		      int iFlags)
+{
+	struct PHYSMEM_GEM_OBJECT *psGEMObj =
+		IMG_CONTAINER_OF(psObj, struct PHYSMEM_GEM_OBJECT, sBase);
+	DEFINE_DMA_BUF_EXPORT_INFO(sDmaBufExportInfo);
+	struct dma_buf *psDmaBuf = NULL;
+	IMG_DEVMEM_SIZE_T uiPMRSize;
+
+	PMRFactoryLock();
+
+	PMRRefPMR(psGEMObj->psPMR);
+
+	PMR_LogicalSize(psGEMObj->psPMR, &uiPMRSize);
+
+	sDmaBufExportInfo.priv  = psGEMObj->psPMR;
+	sDmaBufExportInfo.ops   = &sPVRDmaBufOps;
+	sDmaBufExportInfo.size  = uiPMRSize;
+	sDmaBufExportInfo.flags = iFlags;
+	sDmaBufExportInfo.resv  = psObj->resv;
+
+	/*
+	 * drm_gem_dmabuf_export is not being called, because we are
+	 * not exporting the GEM object. In any case, sDmaBufExportInfo.priv
+	 * would need to point at the drm_gem_object structure.
+	 */
+	psDmaBuf = dma_buf_export(&sDmaBufExportInfo);
+
+	if (IS_ERR(psDmaBuf))
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to export buffer (err=%ld)",
+		         __func__, PTR_ERR(psDmaBuf)));
+		goto fail_export;
+	}
+
+	PMRFactoryUnlock();
+
+	return psDmaBuf;
+
+fail_export:
+	PMRUnrefPMR(psGEMObj->psPMR);
+	PMRFactoryUnlock();
+
+	PVR_ASSERT(IS_ERR_VALUE(psDmaBuf));
+	return psDmaBuf;
+}
+
+static void
+PhysmemGEMObjectFree(struct drm_gem_object *psObj)
+{
+	struct PHYSMEM_GEM_OBJECT *psGEMObj =
+		IMG_CONTAINER_OF(psObj, struct PHYSMEM_GEM_OBJECT, sBase);
+
+	drm_gem_object_release(psObj);
+
+	PMRUnrefPMR(psGEMObj->psPMR);
+
+	OSFreeMem(psGEMObj);
+}
+
+static const struct drm_gem_object_funcs sPhysmemGEMObjFuncs = {
+	.export = PhysmemGEMPrimeExport,
+	.free = PhysmemGEMObjectFree,
+};
+
+PVRSRV_ERROR
+PhysmemExportGemHandle(CONNECTION_DATA *psConnection,
+		       PVRSRV_DEVICE_NODE *psDevNode,
+		       PMR *psPMR,
+		       IMG_UINT32 *puHandle)
+{
+	struct device *psDev = psDevNode->psDevConfig->pvOSDevice;
+	struct drm_device *psDRMDev = dev_get_drvdata(psDev);
+	struct drm_file *psDRMFile = OSGetDRMFile(psConnection);
+	struct PHYSMEM_GEM_OBJECT *psGEMObj;
+	IMG_DEVMEM_SIZE_T uiPMRSize;
+	PVRSRV_ERROR eError;
+	int iErr;
+
+	PMRRefPMR(psPMR);
+	PMR_LogicalSize(psPMR, &uiPMRSize);
+
+	psGEMObj = OSAllocZMem(sizeof(*psGEMObj));
+	PVR_LOG_GOTO_IF_NOMEM(psGEMObj, eError, fail_alloc_mem);
+
+	psGEMObj->sBase.funcs = &sPhysmemGEMObjFuncs;
+
+	psGEMObj->psPMR = psPMR;
+
+	drm_gem_private_object_init(psDRMDev, &psGEMObj->sBase, uiPMRSize);
+
+	iErr = drm_gem_handle_create(psDRMFile, &psGEMObj->sBase, puHandle);
+	if (iErr)
+	{
+		PVR_GOTO_WITH_ERROR(eError, PVRSRV_ERROR_OUT_OF_MEMORY,
+				    fail_handle_create);
+	}
+
+	PMR_SetLayoutFixed(psPMR, IMG_TRUE);
+
+	drm_gem_object_put(&psGEMObj->sBase);
+
+	return PVRSRV_OK;
+
+fail_handle_create:
+	drm_gem_object_put(&psGEMObj->sBase);
+	return eError;
+
+fail_alloc_mem:
+	PMRUnrefPMR(psPMR);
 	return eError;
 }
 

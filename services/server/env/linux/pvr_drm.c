@@ -426,7 +426,7 @@ const struct file_operations pvr_drm_fops = {
 };
 
 const struct drm_driver pvr_drm_generic_driver = {
-	.driver_features	= DRIVER_MODESET | DRIVER_RENDER,
+	.driver_features	= DRIVER_MODESET | DRIVER_RENDER | DRIVER_GEM,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0))
 	.load			= NULL,
@@ -437,6 +437,8 @@ const struct drm_driver pvr_drm_generic_driver = {
 #endif
 	.open			= pvr_drm_open,
 	.postclose		= pvr_drm_release,
+
+	.prime_handle_to_fd	= drm_gem_prime_handle_to_fd,
 
 	.ioctls			= pvr_drm_ioctls,
 	.num_ioctls		= ARRAY_SIZE(pvr_drm_ioctls),

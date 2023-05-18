@@ -85,6 +85,12 @@ PhysmemExportDmaBuf(CONNECTION_DATA *psConnection,
                     IMG_INT *piFd);
 
 PVRSRV_ERROR
+PhysmemExportGemHandle(CONNECTION_DATA *psConnection,
+		       PVRSRV_DEVICE_NODE *psDevNode,
+		       PMR *psPMR,
+		       IMG_UINT32 *puHandle);
+
+PVRSRV_ERROR
 PhysmemImportDmaBuf(CONNECTION_DATA *psConnection,
                     PVRSRV_DEVICE_NODE *psDevNode,
                     IMG_INT fd,

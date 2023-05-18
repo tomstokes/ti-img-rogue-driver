@@ -536,6 +536,7 @@ int PVRSRVDeviceServicesOpen(PVRSRV_DEVICE_NODE *psDeviceNode,
 	mutex_unlock(&sDeviceInitMutex);
 
 	sPrivData.psDevNode = psDeviceNode;
+	sPrivData.psDRMFile = psDRMFile;
 
 	/*
 	 * Here we pass the file pointer which will passed through to our
@@ -631,6 +632,7 @@ static int PVRSRVDeviceSyncOpen(PVRSRV_DEVICE_NODE *psDeviceNode,
 #endif
 
 	sPrivData.psDevNode = psDeviceNode;
+	sPrivData.psDRMFile = psDRMFile;
 
 	/* Call environment specific connection data init function */
 	eError = OSConnectionPrivateDataInit(&psConnection->hOsPrivateData, &sPrivData);
