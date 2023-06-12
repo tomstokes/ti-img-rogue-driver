@@ -2177,6 +2177,11 @@ endif
 
 $(eval $(call TunableKernelConfigMake,SUPPORT_DMA_FENCE,))
 
+$(eval $(call TunableKernelConfigC,SUPPORT_CPUCACHED_FWMEMCTX,,\
+Should only be used on Linux ARM64 systems with CPU->GPU cache _\
+snooping to prevent snooping of Uncached WC buffers due to the _\
+linux direct mapping))
+
 $(eval $(call BothConfigC,PVR_DRM_NAME,"\"pvr\""))
 
 

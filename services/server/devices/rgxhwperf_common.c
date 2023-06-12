@@ -98,6 +98,7 @@ RGXHWPerfGetPackets(IMG_UINT32  ui32BytesExp,
                     RGX_PHWPERF_V2_PACKET_HDR psCurPkt )
 {
 	IMG_UINT32 sizeSum = 0;
+	RGXFwSharedMemCacheOpValue(psCurPkt->ui32Size, INVALIDATE);
 
 	/* Traverse the array to find how many packets will fit in the available space. */
 	while ( sizeSum < ui32BytesExp  &&
@@ -105,6 +106,7 @@ RGXHWPerfGetPackets(IMG_UINT32  ui32BytesExp,
 	{
 		sizeSum += RGX_HWPERF_GET_SIZE(psCurPkt);
 		psCurPkt = RGX_HWPERF_GET_NEXT_PACKET(psCurPkt);
+		RGXFwSharedMemCacheOpValue(psCurPkt->ui32Size, INVALIDATE);
 	}
 
 	return sizeSum;
@@ -134,9 +136,13 @@ static IMG_UINT32 RGXHWPerfCopyDataL1toL2(PVRSRV_RGXDEV_INFO* psDeviceInfo,
 	IMG_BYTE *   pbL2Buffer;
 	IMG_UINT32   ui32L2BufFree;
 	IMG_UINT32   ui32BytesCopied = 0;
-	IMG_UINT32   ui32BytesExpMin = RGX_HWPERF_GET_SIZE(RGX_HWPERF_GET_PACKET(pbFwBuffer));
+	IMG_UINT32   ui32BytesExpMin;
 	PVRSRV_ERROR eError;
 	IMG_BOOL     bIsReaderConnected;
+
+	/* Invalidate initial packet header, type/size cast via RGX_HWPEF_GET_PACKET */
+	RGXFwSharedMemCacheOpPtr(RGX_HWPERF_GET_PACKET(pbFwBuffer), INVALIDATE);
+	ui32BytesExpMin = RGX_HWPERF_GET_SIZE(RGX_HWPERF_GET_PACKET(pbFwBuffer));
 
 	/* HWPERF_MISR_FUNC_DEBUG enables debug code for investigating HWPerf issues */
 #ifdef HWPERF_MISR_FUNC_DEBUG
@@ -158,7 +164,12 @@ static IMG_UINT32 RGXHWPerfCopyDataL1toL2(PVRSRV_RGXDEV_INFO* psDeviceInfo,
 		do
 		{
 			RGX_HWPERF_V2_PACKET_HDR *asCurPos = RGX_HWPERF_GET_PACKET(pbFwBufferIter);
-			IMG_UINT32 ui32CurOrdinal = asCurPos->ui32Ordinal;
+			IMG_UINT32 ui32CurOrdinal;
+			/* Invalidate HDR pointed to by asCurPos as we use both ordinal for detecting
+			 * lost packets and size for iteration.
+			 */
+			RGXFwSharedMemCacheOpPtr(asCurPos, INVALIDATE);
+			ui32CurOrdinal = asCurPos->ui32Ordinal;
 			if (gui32Ordinal != IMG_UINT32_MAX)
 			{
 				if ((gui32Ordinal+1) != ui32CurOrdinal)
@@ -214,6 +225,7 @@ static IMG_UINT32 RGXHWPerfCopyDataL1toL2(PVRSRV_RGXDEV_INFO* psDeviceInfo,
 				  &ui32L2BufFree, &bIsReaderConnected);
 	if ( eError == PVRSRV_OK )
 	{
+		RGXFwSharedMemCacheOpExec(pbFwBuffer, ui32BytesExp, PVRSRV_CACHE_OP_INVALIDATE);
 		OSDeviceMemCopy( pbL2Buffer, pbFwBuffer, (size_t)ui32BytesExp );
 		eError = TLStreamCommit(hHWPerfStream, (size_t)ui32BytesExp);
 		if ( eError != PVRSRV_OK )
@@ -239,6 +251,7 @@ static IMG_UINT32 RGXHWPerfCopyDataL1toL2(PVRSRV_RGXDEV_INFO* psDeviceInfo,
 
 			if ( eError == PVRSRV_OK )
 			{
+				RGXFwSharedMemCacheOpExec(pbFwBuffer, sizeSum, PVRSRV_CACHE_OP_INVALIDATE);
 				OSDeviceMemCopy( pbL2Buffer, pbFwBuffer, (size_t)sizeSum );
 				eError = TLStreamCommit(hHWPerfStream, (size_t)sizeSum);
 				if ( eError != PVRSRV_OK )
@@ -314,15 +327,19 @@ static IMG_UINT32 RGXHWPerfDataStore(PVRSRV_RGXDEV_INFO	*psDevInfo)
 		PVR_DPF_RETURN_VAL(ui32BytesCopiedSum);
 	}
 
+	/* Invalidate partial region of struct */
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl,
+	                           INVALIDATE);
+
 	/* Get a copy of the current
 	 *   read (first packet to read)
 	 *   write (empty location for the next write to be inserted)
 	 *   WrapCount (size in bytes of the buffer at or past end)
 	 * indexes of the FW buffer */
-	ui32SrcRIdx = psFwSysData->ui32HWPerfRIdx;
-	ui32SrcWIdx = psFwSysData->ui32HWPerfWIdx;
+	ui32SrcRIdx = psFwSysData->sHWPerfCtrl.ui32HWPerfRIdx;
+	ui32SrcWIdx = psFwSysData->sHWPerfCtrl.ui32HWPerfWIdx;
 	OSMemoryBarrier(NULL);
-	ui32SrcWrapCount = psFwSysData->ui32HWPerfWrapCount;
+	ui32SrcWrapCount = psFwSysData->sHWPerfCtrl.ui32HWPerfWrapCount;
 
 #if defined(HWPERF_MISR_FUNC_DEBUG) || defined(EMULATOR)
 	{
@@ -358,10 +375,12 @@ static IMG_UINT32 RGXHWPerfDataStore(PVRSRV_RGXDEV_INFO	*psDevInfo)
 			/* Advance the read index and the free bytes counter by the number
 			 * of bytes transported. Items will be left in buffer if not all data
 			 * could be transported. Exit to allow buffer to drain. */
-			OSWriteDeviceMem32WithWMB(&psFwSysData->ui32HWPerfRIdx,
+			OSWriteDeviceMem32WithWMB(&psFwSysData->sHWPerfCtrl.ui32HWPerfRIdx,
 			                          RGXHWPerfAdvanceRIdx(psDevInfo->ui32RGXFWIfHWPerfBufSize,
 			                                               ui32SrcRIdx,
 			                                               ui32BytesCopied));
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl.ui32HWPerfRIdx,
+			                           FLUSH);
 
 			ui32BytesCopiedSum += ui32BytesCopied;
 		}
@@ -390,10 +409,12 @@ static IMG_UINT32 RGXHWPerfDataStore(PVRSRV_RGXDEV_INFO	*psDevInfo)
 			/* Update Wrap Count */
 			if ( ui32SrcRIdx == 0)
 			{
-				OSWriteDeviceMem32WithWMB(&psFwSysData->ui32HWPerfWrapCount,
+				OSWriteDeviceMem32WithWMB(&psFwSysData->sHWPerfCtrl.ui32HWPerfWrapCount,
 				                          psDevInfo->ui32RGXFWIfHWPerfBufSize);
+				RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl.ui32HWPerfWrapCount,
+				                           FLUSH);
 			}
-			OSWriteDeviceMem32WithWMB(&psFwSysData->ui32HWPerfRIdx, ui32SrcRIdx);
+			OSWriteDeviceMem32WithWMB(&psFwSysData->sHWPerfCtrl.ui32HWPerfRIdx, ui32SrcRIdx);
 
 			ui32BytesCopiedSum += ui32BytesCopied;
 
@@ -412,17 +433,20 @@ static IMG_UINT32 RGXHWPerfDataStore(PVRSRV_RGXDEV_INFO	*psDevInfo)
 				                                          psHwPerfInfo,
 				                                          ui32BytesExp);
 				/* Advance the FW buffer read position. */
-				psFwSysData->ui32HWPerfRIdx = RGXHWPerfAdvanceRIdx(
+				psFwSysData->sHWPerfCtrl.ui32HWPerfRIdx = RGXHWPerfAdvanceRIdx(
 						psDevInfo->ui32RGXFWIfHWPerfBufSize, ui32SrcRIdx,
 						ui32BytesCopied);
 
 				ui32BytesCopiedSum += ui32BytesCopied;
 			}
+			/* This flush covers both writes above */
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl.ui32HWPerfRIdx,
+			                           FLUSH);
 		}
 #ifdef HWPERF_MISR_FUNC_DEBUG
 		if (ui32BytesCopiedSum != ui32BytesExpSum)
 		{
-			PVR_DPF((PVR_DBG_WARNING, "RGXHWPerfDataStore: FW L1 RIdx:%u. Not all bytes copied to L2: %u bytes out of %u expected", psFwSysData->ui32HWPerfRIdx, ui32BytesCopiedSum, ui32BytesExpSum));
+			PVR_DPF((PVR_DBG_WARNING, "RGXHWPerfDataStore: FW L1 RIdx:%u. Not all bytes copied to L2: %u bytes out of %u expected", psFwSysData->sHWPerfCtrl.ui32HWPerfRIdx, ui32BytesCopiedSum, ui32BytesExpSum));
 		}
 #endif
 
@@ -738,6 +762,7 @@ PVRSRV_ERROR RGXHWPerfInitOnDemandResources(PVRSRV_RGXDEV_INFO* psRgxDevInfo)
 
 	/* flush write buffers for psRgxDevInfo->psRGXFWIfRuntimeCfg */
 	OSWriteMemoryBarrier(&psRgxDevInfo->psRGXFWIfRuntimeCfg->sHWPerfBuf.ui32Addr);
+	RGXFwSharedMemCacheOpValue(psRgxDevInfo->psRGXFWIfRuntimeCfg->sHWPerfBuf.ui32Addr, FLUSH);
 
 	eError = DevmemAcquireCpuVirtAddr(psRgxDevInfo->psRGXFWIfHWPerfBufMemDesc,
 	                                  (void**)&psRgxDevInfo->psRGXFWIfHWPerfBuf);
@@ -2600,9 +2625,14 @@ static inline void _SetupHostClkSyncPacketData(PVRSRV_RGXDEV_INFO *psRgxDevInfo,
 	RGX_HWPERF_HOST_CLK_SYNC_DATA *psData = (RGX_HWPERF_HOST_CLK_SYNC_DATA *)
 					IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 	RGXFWIF_GPU_UTIL_FWCB *psGpuUtilFWCB = psRgxDevInfo->psRGXFWIfGpuUtilFWCb;
-	IMG_UINT32 ui32CurrIdx =
-			RGXFWIF_TIME_CORR_CURR_INDEX(psGpuUtilFWCB->ui32TimeCorrSeqCount);
-	RGXFWIF_TIME_CORR *psTimeCorr = &psGpuUtilFWCB->sTimeCorr[ui32CurrIdx];
+	IMG_UINT32 ui32CurrIdx;
+	RGXFWIF_TIME_CORR *psTimeCorr;
+
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->ui32TimeCorrSeqCount, INVALIDATE);
+	ui32CurrIdx = RGXFWIF_TIME_CORR_CURR_INDEX(psGpuUtilFWCB->ui32TimeCorrSeqCount);
+
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->sTimeCorr[ui32CurrIdx], INVALIDATE);
+	psTimeCorr = &psGpuUtilFWCB->sTimeCorr[ui32CurrIdx];
 
 	psData->ui64CRTimestamp = psTimeCorr->ui64CRTimeStamp;
 	psData->ui64OSTimestamp = psTimeCorr->ui64OSTimeStamp;

@@ -284,6 +284,8 @@ static int _VersionDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvPriv)
 			/* psDevInfo->psRGXFWIfOsInitMemDesc should be permanently mapped */
 			if (psDevInfo->psRGXFWIfOsInit != NULL)
 			{
+				RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfOsInit->sRGXCompChecks,
+				                           INVALIDATE);
 				if (psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated)
 				{
 					const RGXFWIF_COMPCHECKS *psRGXCompChecks =
@@ -431,6 +433,8 @@ static int _DebugPowerDataDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 			OSLockRelease(psDevInfo->hCounterDumpingLock);
 			return -EIO;
 		}
+
+		RGXFwSharedMemCacheOpExec(pui32PowerBuffer, PAGE_SIZE, PVRSRV_CACHE_OP_INVALIDATE);
 
 		ui32NumOfRegs = *pui32PowerBuffer++;
 		ui32SamplePeriod = *pui32PowerBuffer++;
@@ -686,8 +690,14 @@ static int _DebugStatusDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 		{
 #ifdef SUPPORT_RGX
 			PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
-			const RGXFWIF_HWRINFOBUF *psHWRInfoBuf = psDevInfo->psRGXFWIfHWRInfoBufCtl;
-			const RGXFWIF_SYSDATA *psFwSysData = psDevInfo->psRGXFWIfFwSysData;
+			const RGXFWIF_HWRINFOBUF *psHWRInfoBuf;
+			const RGXFWIF_SYSDATA *psFwSysData;
+
+			RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfHWRInfoBufCtl, INVALIDATE);
+			psHWRInfoBuf = psDevInfo->psRGXFWIfHWRInfoBufCtl;
+
+			RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfFwSysData, INVALIDATE);
+			psFwSysData = psDevInfo->psRGXFWIfFwSysData;
 
 #ifdef PVRSRV_DEBUG_LISR_EXECUTION
 			/* Show the detected #LISR, #MISR scheduled calls */
@@ -712,6 +722,8 @@ static int _DebugStatusDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 				DIPrintf(psEntry, "CRR Event Count: %d\n", ui32CRREventCount);
 #ifdef PVRSRV_STALLED_CCB_ACTION
 				/* Write the number of Sync Lockup Recovery (SLR) events... */
+				RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwOsData->ui32ForcedUpdatesRequested,
+				                           INVALIDATE);
 				DIPrintf(psEntry, "SLR Event Count: %d\n", psDevInfo->psRGXFWIfFwOsData->ui32ForcedUpdatesRequested);
 #endif /* PVRSRV_STALLED_CCB_ACTION */
 			}
@@ -1372,6 +1384,7 @@ static int VZPriorityDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 	PVR_RETURN_IF_FALSE(ui32DriverID < (RGXFW_HOST_DRIVER_ID + RGX_NUM_DRIVERS_SUPPORTED),
 	                    -EINVAL);
 
+	RGXFwSharedMemCacheOpValue(psRuntimeCfg->aui32DriverPriority[ui32DriverID], INVALIDATE);
 	DIPrintf(psEntry, "%u\n", psRuntimeCfg->aui32DriverPriority[ui32DriverID]);
 
 	return 0;
@@ -1427,6 +1440,7 @@ static int VZIsolationGroupDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 	PVR_RETURN_IF_FALSE(ui32DriverID < (RGXFW_HOST_DRIVER_ID + RGX_NUM_DRIVERS_SUPPORTED),
 	                    -EINVAL);
 
+	RGXFwSharedMemCacheOpValue(psRuntimeCfg->aui32DriverIsolationGroup[ui32DriverID], INVALIDATE);
 	DIPrintf(psEntry, "%u\n", psRuntimeCfg->aui32DriverIsolationGroup[ui32DriverID]);
 
 	return 0;

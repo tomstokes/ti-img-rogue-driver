@@ -166,8 +166,14 @@ void RGXGetTimeCorrData(PVRSRV_DEVICE_NODE *psDeviceNode,
 {
 	PVRSRV_RGXDEV_INFO    *psDevInfo     = psDeviceNode->pvDevice;
 	RGXFWIF_GPU_UTIL_FWCB *psGpuUtilFWCB = psDevInfo->psRGXFWIfGpuUtilFWCb;
-	IMG_UINT32 ui32CurrentIndex = psGpuUtilFWCB->ui32TimeCorrSeqCount;
+	IMG_UINT32 ui32CurrentIndex;
 
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->ui32TimeCorrSeqCount, INVALIDATE);
+	ui32CurrentIndex = psGpuUtilFWCB->ui32TimeCorrSeqCount;
+
+	RGXFwSharedMemCacheOpExec(&psGpuUtilFWCB->sTimeCorr[RGXFWIF_TIME_CORR_CURR_INDEX(ui32CurrentIndex - ui32NumOut)],
+	                          sizeof(psGpuUtilFWCB->sTimeCorr[0]) * ui32NumOut,
+	                          PVRSRV_CACHE_OP_INVALIDATE);
 	while (ui32NumOut--)
 	{
 		*(psTimeCorrs++) = psGpuUtilFWCB->sTimeCorr[RGXFWIF_TIME_CORR_CURR_INDEX(ui32CurrentIndex)];
@@ -240,8 +246,13 @@ static void _RGXMakeTimeCorrData(PVRSRV_DEVICE_NODE *psDeviceNode, RGXTIMECORR_E
 {
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 	RGXFWIF_GPU_UTIL_FWCB *psGpuUtilFWCB = psDevInfo->psRGXFWIfGpuUtilFWCb;
-	IMG_UINT32 ui32NewSeqCount = psGpuUtilFWCB->ui32TimeCorrSeqCount + 1;
-	RGXFWIF_TIME_CORR *psTimeCorr = &psGpuUtilFWCB->sTimeCorr[RGXFWIF_TIME_CORR_CURR_INDEX(ui32NewSeqCount)];
+	IMG_UINT32 ui32NewSeqCount;
+	RGXFWIF_TIME_CORR *psTimeCorr;
+
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->ui32TimeCorrSeqCount, INVALIDATE);
+	ui32NewSeqCount = psGpuUtilFWCB->ui32TimeCorrSeqCount + 1;
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->sTimeCorr[RGXFWIF_TIME_CORR_CURR_INDEX(ui32NewSeqCount)], INVALIDATE);
+	psTimeCorr = &psGpuUtilFWCB->sTimeCorr[RGXFWIF_TIME_CORR_CURR_INDEX(ui32NewSeqCount)];
 
 	/*
 	 * The following reads must be done as close together as possible, because
@@ -276,9 +287,13 @@ static void _RGXMakeTimeCorrData(PVRSRV_DEVICE_NODE *psDeviceNode, RGXTIMECORR_E
 
 	/* Make sure the values are written to memory before updating the index of the current entry */
 	OSWriteMemoryBarrier(psTimeCorr);
+	RGXFwSharedMemCacheOpPtr(psTimeCorr, FLUSH);
+
 
 	/* Update the index of the current entry in the timer correlation array */
 	psGpuUtilFWCB->ui32TimeCorrSeqCount = ui32NewSeqCount;
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->ui32TimeCorrSeqCount, FLUSH);
+
 
 	PVR_DPF((PVR_DBG_MESSAGE,
 	         "Timer correlation data (post %s event): OS %" IMG_UINT64_FMTSPEC " ns, "
@@ -308,12 +323,17 @@ static void _RGXCheckTimeCorrData(PVRSRV_DEVICE_NODE *psDeviceNode,
 #define SCALING_FACTOR (10)
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 	RGXFWIF_GPU_UTIL_FWCB *psGpuUtilFWCB = psDevInfo->psRGXFWIfGpuUtilFWCb;
-	IMG_UINT32 ui32Index = RGXFWIF_TIME_CORR_CURR_INDEX(psGpuUtilFWCB->ui32TimeCorrSeqCount);
-	RGXFWIF_TIME_CORR *psTimeCorr = &psGpuUtilFWCB->sTimeCorr[ui32Index];
+	IMG_UINT32 ui32Index;
+	RGXFWIF_TIME_CORR *psTimeCorr;
 	IMG_UINT64 ui64EstimatedTime, ui64CRTimeStamp, ui64OSTimeStamp;
 	IMG_UINT64 ui64CRTimeDiff, ui64OSTimeDiff;
 	IMG_INT64 i64Diff;
 	IMG_UINT32 ui32Ratio, ui32Remainder;
+
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->ui32TimeCorrSeqCount, INVALIDATE);
+	ui32Index = RGXFWIF_TIME_CORR_CURR_INDEX(psGpuUtilFWCB->ui32TimeCorrSeqCount);
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->sTimeCorr[ui32Index], INVALIDATE);
+	psTimeCorr = &psGpuUtilFWCB->sTimeCorr[ui32Index];
 
 	/*
 	 * The following reads must be done as close together as possible, because

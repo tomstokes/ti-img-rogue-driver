@@ -970,6 +970,27 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 					 __func__, eError));
 			goto release_fw_allocations;
 		}
+#if !defined(SUPPORT_TRUSTED_DEVICE) || defined(NO_HARDWARE) || defined(SUPPORT_SECURITY_VALIDATION)
+		RGXFwSharedMemCacheOpExec(pvFWCodeHostAddr,
+		                          sizeof(psDevInfo->psRGXFWCodeMemDesc->uiAllocSize),
+		                          PVRSRV_CACHE_OP_FLUSH);
+		if (uiFWCorememCodeAllocSize)
+		{
+			RGXFwSharedMemCacheOpExec(pvFWCorememCodeHostAddr,
+			                          sizeof(psDevInfo->psRGXFWCorememCodeMemDesc->uiAllocSize),
+			                          PVRSRV_CACHE_OP_FLUSH);
+		}
+
+		RGXFwSharedMemCacheOpExec(pvFWDataHostAddr,
+		                          sizeof(psDevInfo->psRGXFWDataMemDesc->uiAllocSize),
+		                          PVRSRV_CACHE_OP_FLUSH);
+		if (uiFWCorememDataAllocSize)
+		{
+			RGXFwSharedMemCacheOpExec(pvFWCorememDataHostAddr,
+			                          sizeof(psDevInfo->psRGXFWIfCorememDataStoreMemDesc->uiAllocSize),
+			                          PVRSRV_CACHE_OP_FLUSH);
+		}
+#endif
 	}
 
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(NO_HARDWARE) && !defined(SUPPORT_SECURITY_VALIDATION)
@@ -1336,6 +1357,7 @@ static PVRSRV_ERROR InitialiseAllCounters(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 	InitialiseHWPerfCounters(psDeviceNode, psDevInfo, psDevInfo->psRGXFWIfHWPerfCountersMemDesc, psHWPerfInitData);
 	InitialiseCustomCounters(psDeviceNode, psDevInfo->psRGXFWIfHWPerfCountersMemDesc);
+	RGXFwSharedMemCacheOpPtr(psHWPerfInitData, FLUSH);
 
 failHWPerfCountersMemDescAqCpuVirt:
 	DevmemReleaseCpuVirtAddr(psDevInfo->psRGXFWIfHWPerfCountersMemDesc);

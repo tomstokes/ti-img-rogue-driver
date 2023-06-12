@@ -402,6 +402,7 @@ PVRSRV_ERROR PVRSRVRGXTDMDestroyTransferContextKM(RGX_SERVER_TQ_TDM_CONTEXT *psT
 			return eError;
 		}
 
+		RGXFwSharedMemCacheOpValue(psFWTransferContext->ui32WorkEstCCBSubmitted, INVALIDATE);
 		ui32WorkEstCCBSubmitted = psFWTransferContext->ui32WorkEstCCBSubmitted;
 
 		DevmemReleaseCpuVirtAddr(psTransferContext->psFWTransferContextMemDesc);

@@ -53,6 +53,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgxdevice.h"
 #include "rgx_hwperf.h"
 #include "rgx_fwif_hwperf.h"
+#include "cache_ops.h"
+#include "rgxfwmemctx.h"
 
 /* HWPerf host buffer size constraints in KBs */
 #define HWPERF_HOST_TL_STREAM_SIZE_DEFAULT PVRSRV_APPHINT_HWPERFHOSTBUFSIZEINKB
@@ -94,6 +96,7 @@ static INLINE PVRSRV_ERROR RGXAcquireHWPerfCtlCPUAddr(PVRSRV_DEVICE_NODE *psDevN
 
 	eError = DevmemAcquireCpuVirtAddr(psDevInfo->psRGXFWIfHWPerfCountersMemDesc,
 	                                  (void**)ppsHWPerfCtl);
+	RGXFwSharedMemCacheOpPtr(ppsHWPerfCtl, INVALIDATE);
 
 	return eError;
 }

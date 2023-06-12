@@ -244,6 +244,7 @@ void WorkEstCheckFirmwareCCB(PVRSRV_RGXDEV_INFO *psDevInfo)
 	IMG_UINT8 *psFWCCB = psDevInfo->psWorkEstFirmwareCCB;
 	RGXFWIF_CCB_CTL *psFWCCBCtl = psDevInfo->psWorkEstFirmwareCCBCtl;
 
+	RGXFwSharedMemCacheOpPtr(psFWCCBCtl, INVALIDATE);
 	while (psFWCCBCtl->ui32ReadOffset != psFWCCBCtl->ui32WriteOffset)
 	{
 		PVRSRV_ERROR eError;
@@ -257,6 +258,7 @@ void WorkEstCheckFirmwareCCB(PVRSRV_RGXDEV_INFO *psDevInfo)
 		/* Update read offset */
 		psFWCCBCtl->ui32ReadOffset = (psFWCCBCtl->ui32ReadOffset + 1) & psFWCCBCtl->ui32WrapMask;
 	}
+	RGXFwSharedMemCacheOpValue(psFWCCBCtl->ui32ReadOffset, FLUSH);
 }
 
 PVRSRV_ERROR WorkEstPrepare(PVRSRV_RGXDEV_INFO        *psDevInfo,
@@ -444,6 +446,8 @@ PVRSRV_ERROR WorkEstRetire(PVRSRV_RGXDEV_INFO *psDevInfo,
 	PVR_LOG_RETURN_IF_FALSE(psReturnCmd,
 	                        "WorkEstRetire: Missing return command",
 	                        PVRSRV_ERROR_INVALID_PARAMS);
+
+	RGXFwSharedMemCacheOpPtr(psReturnCmd, INVALIDATE);
 
 	if (psReturnCmd->ui16ReturnDataIndex >= RETURN_DATA_ARRAY_SIZE)
 	{

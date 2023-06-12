@@ -73,6 +73,8 @@ PVRSRVRGXBeginTimerQueryKM(CONNECTION_DATA    * psConnection,
 	psDevInfo->pui64StartTimeById[ui32QueryId] = 0UL;
 	psDevInfo->pui64EndTimeById[ui32QueryId]   = 0UL;
 	OSWriteMemoryBarrier(&psDevInfo->pui64EndTimeById[ui32QueryId]);
+	RGXFwSharedMemCacheOpValue(psDevInfo->pui64StartTimeById[ui32QueryId], FLUSH);
+	RGXFwSharedMemCacheOpValue(psDevInfo->pui64EndTimeById[ui32QueryId], FLUSH);
 
 	/* save of the active query index */
 	psDevInfo->ui32ActiveQueryId = ui32QueryId;
@@ -135,6 +137,8 @@ PVRSRVRGXQueryTimerKM(CONNECTION_DATA    * psConnection,
 #endif
 
 	ui32Scheduled = psDevInfo->aui32ScheduledOnId[ui32QueryId];
+
+	RGXFwSharedMemCacheOpValue(psDevInfo->pui32CompletedById[ui32QueryId], INVALIDATE);
 	ui32Completed = psDevInfo->pui32CompletedById[ui32QueryId];
 
 	/* if there was no kick since the Begin() on this id we return 0-s as Begin cleared
@@ -143,6 +147,8 @@ PVRSRVRGXQueryTimerKM(CONNECTION_DATA    * psConnection,
 	 */
 	if (ui32Completed >= ui32Scheduled)
 	{
+		RGXFwSharedMemCacheOpValue(psDevInfo->pui64StartTimeById[ui32QueryId], INVALIDATE);
+		RGXFwSharedMemCacheOpValue(psDevInfo->pui64EndTimeById[ui32QueryId], INVALIDATE);
 		* pui64StartTime = psDevInfo->pui64StartTimeById[ui32QueryId];
 		* pui64EndTime   = psDevInfo->pui64EndTimeById[ui32QueryId];
 

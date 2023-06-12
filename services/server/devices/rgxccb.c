@@ -523,6 +523,9 @@ static void _RGXUpdateCCBUtilisation(RGX_CLIENT_CCB *psClientCCB)
 {
 	IMG_UINT32 ui32FreeSpace, ui32MemCurrentUsage;
 
+	RGXFwSharedMemCacheOpValue(psClientCCB->psClientCCBCtrl->ui32ReadOffset,
+	                           INVALIDATE);
+
 	ui32FreeSpace = GET_CCB_SPACE(psClientCCB->ui32HostWriteOffset,
 									  psClientCCB->psClientCCBCtrl->ui32ReadOffset,
 									  psClientCCB->ui32Size);
@@ -793,6 +796,10 @@ PVRSRV_ERROR RGXCreateCCB(PVRSRV_RGXDEV_INFO	*psDevInfo,
 	/* psClientCCBCtrlMemDesc was zero alloc'd so no need to initialise offsets. */
 	psClientCCB->psClientCCBCtrl->ui32WrapMask = ui32AllocSize - 1;
 
+	/* Flush the whole struct since other parts are implicitly init (zero'd) */
+	RGXFwSharedMemCacheOpPtr(psClientCCB->psClientCCBCtrl,
+	                         FLUSH);
+
 	PDUMPCOMMENT(psDevInfo->psDeviceNode, "cCCB control");
 	DevmemPDumpLoadMem(psClientCCB->psClientCCBCtrlMemDesc,
 					   0,
@@ -988,6 +995,10 @@ PVRSRV_ERROR RGXCheckSpaceCCB(RGX_CLIENT_CCB *psClientCCB, IMG_UINT32 ui32CmdSiz
 		sure we insert a padding command now and wrap before adding the main
 		command.
 	*/
+
+	/* Invalidate read offset */
+	RGXFwSharedMemCacheOpValue(psClientCCB->psClientCCBCtrl->ui32ReadOffset,
+	                           INVALIDATE);
 	if ((psClientCCB->ui32HostWriteOffset + ui32CmdSize + PADDING_COMMAND_SIZE) <= psClientCCB->ui32Size)
 	{
 		ui32FreeSpace = GET_CCB_SPACE(psClientCCB->ui32HostWriteOffset,
@@ -1103,6 +1114,7 @@ PVRSRV_ERROR RGXAcquireCCB(RGX_CLIENT_CCB *psClientCCB,
 			minimum amount for the padding command) we will need to make sure we insert a
 			padding command now and wrap before adding the main command.
 		*/
+
 		if ((psClientCCB->ui32HostWriteOffset + ui32CmdSize + PADDING_COMMAND_SIZE) <= psClientCCB->ui32Size)
 		{
 			/* The command can fit without wrapping... */
@@ -1121,6 +1133,8 @@ PVRSRV_ERROR RGXAcquireCCB(RGX_CLIENT_CCB *psClientCCB,
 						psClientCCB->ui32Size);
 #endif
 
+			RGXFwSharedMemCacheOpValue(psClientCCB->psClientCCBCtrl->ui32ReadOffset,
+			                           INVALIDATE);
 			ui32FreeSpace = GET_CCB_SPACE(psClientCCB->ui32HostWriteOffset,
 										psClientCCB->psClientCCBCtrl->ui32ReadOffset,
 										psClientCCB->ui32Size);
@@ -1149,6 +1163,8 @@ PVRSRV_ERROR RGXAcquireCCB(RGX_CLIENT_CCB *psClientCCB,
 			IMG_UINT32 ui32Remain = psClientCCB->ui32Size - psClientCCB->ui32HostWriteOffset;
 
 #if defined(PVRSRV_ENABLE_CCCB_GROW)
+			RGXFwSharedMemCacheOpValue(psClientCCB->psClientCCBCtrl->ui32ReadOffset,
+			                           INVALIDATE);
 			/* Check this is a growable CCB */
 			if (psClientCCB->ui32VirtualAllocSize > 0)
 			{
@@ -1299,6 +1315,8 @@ PVRSRV_ERROR RGXAcquireCCB(RGX_CLIENT_CCB *psClientCCB,
 							ui32CmdSize,
 							psClientCCB->ui32Size);
 #endif
+				RGXFwSharedMemCacheOpValue(psClientCCB->psClientCCBCtrl->ui32ReadOffset,
+				                           INVALIDATE);
 				ui32FreeSpace = GET_CCB_SPACE(psClientCCB->ui32HostWriteOffset,
 											psClientCCB->psClientCCBCtrl->ui32ReadOffset,
 											psClientCCB->ui32Size);
@@ -1503,6 +1521,12 @@ void RGXReleaseCCB(RGX_CLIENT_CCB *psClientCCB,
 
 	}
 #endif
+	/* Flush the CCB data */
+	RGXFwSharedMemFlushCCB(psClientCCB->pvClientCCB,
+	                       psClientCCB->psClientCCBCtrl->ui32ReadOffset,
+	                       psClientCCB->ui32HostWriteOffset,
+	                       psClientCCB->psClientCCBCtrl->ui32WrapMask + 1);
+
 	/*
 	 * Update the CCB write offset.
 	 */
@@ -2355,6 +2379,8 @@ PVRSRV_ERROR CheckForStalledCCB(PVRSRV_DEVICE_NODE *psDevNode, RGX_CLIENT_CCB *p
 	 * If we use the wrong value, we might incorrectly determine that the offsets are invalid.
 	 */
 	ui32WrapMask = RGXGetWrapMaskCCB(psCurrentClientCCB);
+	RGXFwSharedMemCacheOpPtr(psCurrentClientCCB->psClientCCBCtrl,
+	                         INVALIDATE);
 	psClientCCBCtrl = psCurrentClientCCB->psClientCCBCtrl;
 	ui32SampledRdOff = psClientCCBCtrl->ui32ReadOffset;
 	ui32SampledDpOff = psClientCCBCtrl->ui32DepOffset;
@@ -2381,6 +2407,8 @@ PVRSRV_ERROR CheckForStalledCCB(PVRSRV_DEVICE_NODE *psDevNode, RGX_CLIENT_CCB *p
 
 		/* Only log a stalled CCB if GPU is idle (any state other than POW_ON is considered idle).
 		 * Guest drivers do not initialize psRGXFWIfFwSysData, so they assume FW internal state is ON. */
+		RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->ePowState,
+		                           INVALIDATE);
 		if (((psDevInfo->psRGXFWIfFwSysData == NULL) || (psDevInfo->psRGXFWIfFwSysData->ePowState != RGXFWIF_POW_ON)) &&
 			(psDevInfo->ui32SLRHoldoffCounter == 0))
 		{
@@ -2482,6 +2510,8 @@ void DumpCCB(PVRSRV_RGXDEV_INFO *psDevInfo,
 #if defined(PVRSRV_ENABLE_CCCB_GROW)
 	OSLockAcquire(psCurrentClientCCB->hCCBGrowLock);
 #endif
+	RGXFwSharedMemCacheOpPtr(psCurrentClientCCB->psClientCCBCtrl,
+	                         INVALIDATE);
 	psClientCCBCtrl = psCurrentClientCCB->psClientCCBCtrl;
 	pvClientCCBBuff = psCurrentClientCCB->pvClientCCB;
 	ui32EndOffset = psCurrentClientCCB->ui32HostWriteOffset;
@@ -2619,11 +2649,17 @@ void DumpFirstCCBCmd(PRGXFWIF_FWCOMMONCONTEXT sFWCommonContext,
 				DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 				void *pvDumpDebugFile)
 {
-	volatile RGXFWIF_CCCB_CTL	*psClientCCBCtrl = psCurrentClientCCB->psClientCCBCtrl;
+	volatile RGXFWIF_CCCB_CTL	*psClientCCBCtrl;
 	void					*pvClientCCBBuff = psCurrentClientCCB->pvClientCCB;
-	IMG_UINT32					ui32SampledRdOff = psClientCCBCtrl->ui32ReadOffset;
-	IMG_UINT32					ui32SampledDepOff = psClientCCBCtrl->ui32DepOffset;
 	IMG_UINT32					ui32SampledWrOff = psCurrentClientCCB->ui32HostWriteOffset;
+	IMG_UINT32					ui32SampledRdOff;
+	IMG_UINT32					ui32SampledDepOff;
+
+	RGXFwSharedMemCacheOpPtr(psCurrentClientCCB->psClientCCBCtrl,
+	                         INVALIDATE);
+	psClientCCBCtrl = psCurrentClientCCB->psClientCCBCtrl;
+	ui32SampledRdOff = psClientCCBCtrl->ui32ReadOffset;
+	ui32SampledDepOff = psClientCCBCtrl->ui32DepOffset;
 
 	if ((ui32SampledRdOff == ui32SampledDepOff) &&
 		(ui32SampledRdOff != ui32SampledWrOff))
@@ -2717,11 +2753,20 @@ void DumpStalledContextInfo(PVRSRV_RGXDEV_INFO *psDevInfo)
 
 	if (psStalledClientCCB)
 	{
-		volatile RGXFWIF_CCCB_CTL *psClientCCBCtrl = psStalledClientCCB->psClientCCBCtrl;
-		IMG_UINT32 ui32SampledDepOffset = psClientCCBCtrl->ui32DepOffset;
-		void                 *pvPtr = IMG_OFFSET_ADDR(psStalledClientCCB->pvClientCCB, ui32SampledDepOffset);
-		RGXFWIF_CCB_CMD_HEADER    *psCommandHeader = pvPtr;
-		RGXFWIF_CCB_CMD_TYPE      eCommandType = psCommandHeader->eCmdType;
+		volatile RGXFWIF_CCCB_CTL *psClientCCBCtrl;
+		IMG_UINT32 ui32SampledDepOffset;
+		void                 *pvPtr;
+		RGXFWIF_CCB_CMD_HEADER    *psCommandHeader;
+		RGXFWIF_CCB_CMD_TYPE      eCommandType;
+
+		RGXFwSharedMemCacheOpValue(psStalledClientCCB->psClientCCBCtrl->ui32DepOffset,
+		                           INVALIDATE);
+		psClientCCBCtrl = psStalledClientCCB->psClientCCBCtrl;
+		ui32SampledDepOffset = psClientCCBCtrl->ui32DepOffset;
+		/* No need to invalidate CCCB as FW doesn't write to it, only read. */
+		pvPtr = IMG_OFFSET_ADDR(psStalledClientCCB->pvClientCCB, ui32SampledDepOffset);
+		psCommandHeader = pvPtr;
+		eCommandType = psCommandHeader->eCmdType;
 
 		if ((eCommandType == RGXFWIF_CCB_CMD_TYPE_FENCE) || (eCommandType == RGXFWIF_CCB_CMD_TYPE_FENCE_PR))
 		{
@@ -2731,6 +2776,8 @@ void DumpStalledContextInfo(PVRSRV_RGXDEV_INFO *psDevInfo)
 			IMG_UINT32 ui32UnsignalledUFOVaddrs[PVRSRV_MAX_SYNCS];
 
 #if defined(PVRSRV_STALLED_CCB_ACTION)
+			RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfFwOsData,
+			                         INVALIDATE);
 			if (!psDevInfo->psRGXFWIfFwOsData->sSLRLogFirst.aszCCBName[0])
 			{
 				OSClockMonotonicns64(&psDevInfo->psRGXFWIfFwOsData->sSLRLogFirst.ui64Timestamp);
@@ -2753,6 +2800,8 @@ void DumpStalledContextInfo(PVRSRV_RGXDEV_INFO *psDevInfo)
 			psDevInfo->psRGXFWIfFwOsData->ui32ForcedUpdatesRequested++;
 			/* flush write buffers for psRGXFWIfFwOsData */
 			OSWriteMemoryBarrier(&psDevInfo->psRGXFWIfFwOsData->sSLRLog[psDevInfo->psRGXFWIfFwOsData->ui8SLRLogWp]);
+			RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfFwOsData,
+			                         FLUSH);
 #endif
 			PVR_LOG(("Fence found on context 0x%x '%s' @ %d has %d UFOs",
 			         FWCommonContextGetFWAddress(psStalledClientCCB->psServerCommonContext).ui32Addr,

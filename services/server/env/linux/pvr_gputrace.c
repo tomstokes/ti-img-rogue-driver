@@ -668,11 +668,17 @@ static uint64_t CalculateEventTimestamp(
 {
 	RGXFWIF_GPU_UTIL_FWCB *psGpuUtilFWCB = psDevInfo->psRGXFWIfGpuUtilFWCb;
 	RGX_HWPERF_FTRACE_DATA *psFtraceData = psDevInfo->pvGpuFtraceData;
-	RGXFWIF_TIME_CORR *psTimeCorr = &psGpuUtilFWCB->sTimeCorr[ui32TimeCorrIndex];
-	uint64_t ui64CRTimeStamp = psTimeCorr->ui64CRTimeStamp;
-	uint64_t ui64OSTimeStamp = psTimeCorr->ui64OSTimeStamp;
-	uint64_t ui64CRDeltaToOSDeltaKNs = psTimeCorr->ui64CRDeltaToOSDeltaKNs;
+	RGXFWIF_TIME_CORR *psTimeCorr;
+	uint64_t ui64CRTimeStamp;
+	uint64_t ui64OSTimeStamp;
+	uint64_t ui64CRDeltaToOSDeltaKNs;
 	uint64_t ui64EventOSTimestamp, deltaRgxTimer, delta_ns;
+
+	RGXFwSharedMemCacheOpValue(psGpuUtilFWCB->sTimeCorr[ui32TimeCorrIndex], INVALIDATE);
+	psTimeCorr = &psGpuUtilFWCB->sTimeCorr[ui32TimeCorrIndex];
+	ui64CRTimeStamp = psTimeCorr->ui64CRTimeStamp;
+	ui64OSTimeStamp = psTimeCorr->ui64OSTimeStamp;
+	ui64CRDeltaToOSDeltaKNs = psTimeCorr->ui64CRDeltaToOSDeltaKNs;
 
 	if (psFtraceData->ui64LastSampledTimeCorrOSTimeStamp > ui64OSTimeStamp)
 	{

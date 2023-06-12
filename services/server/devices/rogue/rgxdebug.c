@@ -1857,6 +1857,9 @@ static PVRSRV_ERROR _RGXMipsExtraDebug(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_MIPS_S
 
 	/* Readback performed as a part of memory barrier */
 	OSWriteMemoryBarrier(pui32SyncFlag);
+	RGXFwSharedMemCacheOpPtr(pui32SyncFlag,
+	                         FLUSH);
+
 
 	/* Enable NMI issuing in the MIPS wrapper */
 	OSWriteHWReg64(pvRegsBaseKM,
@@ -1906,6 +1909,9 @@ static PVRSRV_ERROR _RGXMipsExtraDebug(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_MIPS_S
 
 	/* Readback performed as a part of memory barrier */
 	OSWriteMemoryBarrier(pui32SyncFlag);
+	RGXFwSharedMemCacheOpPtr(pui32SyncFlag,
+	                         FLUSH);
+
 
 	/* Wait for the FW to have finished the NMI routine */
 	ui32RegRead = OSReadHWReg32(pvRegsBaseKM,
@@ -1929,6 +1935,8 @@ static PVRSRV_ERROR _RGXMipsExtraDebug(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_MIPS_S
 	ui32RegRead = 0;
 
 	/* Copy state */
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfSysInit->sMIPSState,
+	                           INVALIDATE);
 	OSDeviceMemCopy(psMIPSState, &psDevInfo->psRGXFWIfSysInit->sMIPSState, sizeof(*psMIPSState));
 
 	--(psMIPSState->ui32ErrorEPC);
@@ -2238,6 +2246,7 @@ static void _RGXDumpFWAssert(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 	for (i = 0; i < RGXFW_THREAD_NUM; i++)
 	{
+		RGXFwSharedMemCacheOpValue(psRGXFWIfTraceBufCtl->sTraceBuf[i].sAssertBuf, INVALIDATE);
 		pszTraceAssertPath = psRGXFWIfTraceBufCtl->sTraceBuf[i].sAssertBuf.szPath;
 		pszTraceAssertInfo = psRGXFWIfTraceBufCtl->sTraceBuf[i].sAssertBuf.szInfo;
 		ui32TraceAssertLine = psRGXFWIfTraceBufCtl->sTraceBuf[i].sAssertBuf.ui32LineNum;
@@ -2308,6 +2317,7 @@ static void _RGXDumpFWPoll(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 					const RGXFWIF_SYSDATA *psFwSysData)
 {
 	IMG_UINT32 i;
+
 	for (i = 0; i < RGXFW_THREAD_NUM; i++)
 	{
 		if (psFwSysData->aui32CrPollAddr[i])
@@ -2798,6 +2808,10 @@ static void _RGXDumpFWKickCountInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	OSStringLCopy(pszLine, szKicksHeader, ui32LineSize);
 	pszTemp = pszLine + ui32KicksHeaderCharCount;
 
+	/* Invalidate the whole array before reading */
+	RGXFwSharedMemCacheOpValue(psFwOsData->aui32KickCount,
+	                           INVALIDATE);
+
 	for (ui32DMIndex = 1 /*Skip GP*/;  ui32DMIndex < psDevInfo->sDevFeatureCfg.ui32MAXDMCount;  ui32DMIndex++)
 	{
 		pszTemp += OSSNPrintf(pszTemp,
@@ -2900,6 +2914,10 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	/* space for the current clock speed and 3 previous */
 	RGXFWIF_TIME_CORR asTimeCorrs[4];
 	IMG_UINT32 ui32NumClockSpeedChanges;
+
+	/* Should invalidate all reads below including when passed to functions. */
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfFwSysData, INVALIDATE);
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfRuntimeCfg, INVALIDATE);
 
 #if defined(NO_HARDWARE)
 	PVR_UNREFERENCED_PARAMETER(bRGXPoweredON);
@@ -3048,8 +3066,14 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 #if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (defined(RGX_NUM_DRIVERS_SUPPORTED) && (RGX_NUM_DRIVERS_SUPPORTED > 1))
 	if (!PVRSRV_VZ_MODE_IS(NATIVE))
 	{
-		RGXFWIF_CONNECTION_FW_STATE eFwState = KM_GET_FW_CONNECTION(psDevInfo);
-		RGXFWIF_CONNECTION_OS_STATE eOsState = KM_GET_OS_CONNECTION(psDevInfo);
+		RGXFWIF_CONNECTION_FW_STATE eFwState;
+		RGXFWIF_CONNECTION_OS_STATE eOsState;
+
+		KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
+		KM_CONNECTION_CACHEOP(Os, INVALIDATE);
+
+		eFwState = KM_GET_FW_CONNECTION(psDevInfo);
+		eOsState = KM_GET_OS_CONNECTION(psDevInfo);
 
 		PVR_DUMPDEBUG_LOG("RGX Virtualisation firmware connection state: %s (Fw=%s; OS=%s)",
 						  ((eFwState == RGXFW_CONNECTION_FW_ACTIVE) && (eOsState == RGXFW_CONNECTION_OS_ACTIVE)) ? ("UP") : ("DOWN"),
@@ -3062,8 +3086,14 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 #if defined(SUPPORT_AUTOVZ) && defined(RGX_NUM_DRIVERS_SUPPORTED) && (RGX_NUM_DRIVERS_SUPPORTED > 1)
 	if (!PVRSRV_VZ_MODE_IS(NATIVE))
 	{
-		IMG_UINT32 ui32FwAliveTS = KM_GET_FW_ALIVE_TOKEN(psDevInfo);
-		IMG_UINT32 ui32OsAliveTS = KM_GET_OS_ALIVE_TOKEN(psDevInfo);
+		IMG_UINT32 ui32FwAliveTS;
+		IMG_UINT32 ui32OsAliveTS;
+
+		KM_ALIVE_TOKEN_CACHEOP(Fw, INVALIDATE);
+		KM_ALIVE_TOKEN_CACHEOP(Os, INVALIDATE);
+
+		ui32FwAliveTS = KM_GET_FW_ALIVE_TOKEN(psDevInfo);
+		ui32OsAliveTS = KM_GET_OS_ALIVE_TOKEN(psDevInfo);
 
 		PVR_DUMPDEBUG_LOG("RGX Virtualisation watchdog timestamps (in GPU timer ticks): Fw=%u; OS=%u; diff(FW, OS) = %u",
 						  ui32FwAliveTS, ui32OsAliveTS, ui32FwAliveTS - ui32OsAliveTS);
@@ -3199,6 +3229,7 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 		PVR_DUMPDEBUG_LOG("RGX FW Power State: Unavailable under Guest Mode of operation");
 	}
 
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfHWRInfoBufCtl, INVALIDATE);
 	_RGXDumpFWHWRInfo(pfnDumpDebugPrintf, pvDumpDebugFile, psFwSysData, psDevInfo->psRGXFWIfHWRInfoBufCtl, psDevInfo);
 #if defined(SUPPORT_VALIDATION)
 	_RGXDumpFWKickCountInfo(pfnDumpDebugPrintf, pvDumpDebugFile, psDevInfo->psRGXFWIfFwOsData, psDevInfo);
@@ -3524,6 +3555,8 @@ PVRSRV_ERROR RGXDumpRGXRegisters(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	PVR_DUMPDEBUG_LOG("RGX Register Base Address (Physical): 0x%08lX", (unsigned long)psDevInfo->sRegsPhysBase.uiAddr);
 
 	/* Check if firmware perf was set at Init time */
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfSysInit->eFirmwarePerf,
+	                           INVALIDATE);
 	bFirmwarePerf = (psDevInfo->psRGXFWIfSysInit->eFirmwarePerf != FW_PERF_CONF_NONE);
 
 	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, PBVNC_COREID_REG))

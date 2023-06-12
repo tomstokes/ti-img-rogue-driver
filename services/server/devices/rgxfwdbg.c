@@ -80,6 +80,7 @@ PVRSRVRGXFWDebugQueryFWLogKM(
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType, INVALIDATE);
 	*pui32RGXFWLogType = psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType;
 	return PVRSRV_OK;
 }
@@ -102,6 +103,7 @@ PVRSRVRGXFWDebugSetFWLogKM(
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	PVRSRV_VZ_RET_IF_MODE(GUEST, PVRSRV_ERROR_NOT_SUPPORTED);
 
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType, INVALIDATE);
 	ui32OldRGXFWLogTpe = psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType;
 
 	/* check log type is valid */
@@ -117,6 +119,7 @@ PVRSRVRGXFWDebugSetFWLogKM(
 	 */
 	psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType = ui32RGXFWLogType;
 	OSMemoryBarrier(&psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType);
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType, FLUSH);
 
 	/* Allocate firmware trace buffer resource(s) if not already done */
 	if (RGXTraceBufferIsInitRequired(psDevInfo))
@@ -145,6 +148,7 @@ PVRSRVRGXFWDebugSetFWLogKM(
 		         __func__));
 		psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType = ui32OldRGXFWLogTpe;
 		OSMemoryBarrier(&psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType);
+		RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfTraceBufCtl->ui32LogType, FLUSH);
 
 		OSLockRelease(psDevInfo->hRGXFWIfBufInitLock);
 
@@ -269,6 +273,7 @@ PVRSRVRGXFWDebugSetDriverPriorityKM(
 	sVzPriorityCmd.eCmdType = RGXFWIF_KCCB_CMD_VZ_DRV_ARRAY_CHANGE;
 	psDevInfo->psRGXFWIfRuntimeCfg->aui32DriverPriority[ui32DriverID] = ui32DriverPriority;
 	OSWriteMemoryBarrier(&psDevInfo->psRGXFWIfRuntimeCfg->aui32DriverPriority[ui32DriverID]);
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfRuntimeCfg->aui32DriverPriority[ui32DriverID], FLUSH);
 
 #if defined(PDUMP)
 	PDUMPCOMMENT(psDevInfo->psDeviceNode,
@@ -323,6 +328,7 @@ PVRSRVRGXFWDebugSetDriverIsolationGroupKM(
 	sVzIsolationGroupCmd.eCmdType = RGXFWIF_KCCB_CMD_VZ_DRV_ARRAY_CHANGE;
 	psDevInfo->psRGXFWIfRuntimeCfg->aui32DriverIsolationGroup[ui32DriverID] = ui32DriverIsolationGroup;
 	OSWriteMemoryBarrier(&psDevInfo->psRGXFWIfRuntimeCfg->aui32DriverIsolationGroup[ui32DriverID]);
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfRuntimeCfg->aui32DriverIsolationGroup[ui32DriverID], FLUSH);
 
 #if defined(PDUMP)
 	PDUMPCOMMENT(psDevInfo->psDeviceNode,

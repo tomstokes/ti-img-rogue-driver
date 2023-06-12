@@ -107,6 +107,7 @@ static void _RGXUpdateGPUUtilStats(PVRSRV_RGXDEV_INFO *psDevInfo)
 	RGXFWIF_DM eDM;
 
 	psUtilFWCb = psDevInfo->psRGXFWIfGpuUtilFWCb;
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfGpuUtilFWCb, INVALIDATE);
 	paui64DMOSLastWord = &psUtilFWCb->aaui64DMOSLastWord[0];
 	paaui64DMOSStatsCounters = &psUtilFWCb->aaaui64DMOSStatsCounters[0];
 
@@ -138,6 +139,7 @@ static void _RGXUpdateGPUUtilStats(PVRSRV_RGXDEV_INFO *psDevInfo)
 			paui64DMOSLastWord[eDM][ui32DriverID] = RGXFWIF_GPU_UTIL_MAKE_WORD(ui64TimeNow, ui64LastState);
 		}
 	}
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfGpuUtilFWCb, FLUSH);
 
 	OSLockRelease(psDevInfo->hGPUUtilLock);
 }
@@ -220,6 +222,8 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 		/* Check the Power state after the answer */
 		if (eError == PVRSRV_OK)
 		{
+			RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+			                           INVALIDATE);
 			/* Finally, de-initialise some registers. */
 			if (psFwSysData->ePowState == RGXFWIF_POW_OFF)
 			{
@@ -229,6 +233,7 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 				/* Driver takes the VZ Fw-KM connection down, preventing the
 				 * firmware from submitting further interrupts */
 				KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
+				KM_CONNECTION_CACHEOP(Os, FLUSH);
 
 #if defined(RGX_FW_IRQ_OS_COUNTERS)
 				ui32idx = RGXFW_HOST_DRIVER_ID;
@@ -245,7 +250,8 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 					                              (IMG_UINT32 __iomem *)&psDevInfo->aui32SampleIRQCount[ui32idx],
 					                              ui32IrqCnt,
 					                              0xffffffff,
-					                              POLL_FLAG_LOG_ERROR);
+					                              POLL_FLAG_LOG_ERROR,
+					                              NULL);
 
 					if (eError != PVRSRV_OK)
 					{
@@ -332,6 +338,9 @@ static PVRSRV_ERROR _RGXWaitForGuestsToDisconnect(PVRSRV_DEVICE_NODE *psDeviceNo
 	{
 		IMG_UINT32 ui32DriverID;
 		IMG_BOOL bGuestOnline = IMG_FALSE;
+
+		RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->asOsRuntimeFlagsMirror,
+		                           INVALIDATE);
 
 		for (ui32DriverID = RGXFW_GUEST_DRIVER_ID_START;
 			 ui32DriverID < RGX_NUM_DRIVERS_SUPPORTED; ui32DriverID++)
@@ -437,6 +446,9 @@ PVRSRV_ERROR RGXVzPrePowerState(IMG_HANDLE				hDevHandle,
 		{
 			PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 
+			KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
+			KM_CONNECTION_CACHEOP(Os, INVALIDATE);
+
 			if (KM_FW_CONNECTION_IS(ACTIVE, psDevInfo) &&
 				KM_OS_CONNECTION_IS(ACTIVE, psDevInfo))
 			{
@@ -501,6 +513,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 		 * in hardware scratch registers, they will be cleared on power down. When using shared
 		 * memory the connection data must be explicitly cleared by the driver. */
 		OSCachedMemSetWMB(psDevInfo->psRGXFWIfConnectionCtl, 0, sizeof(RGXFWIF_CONNECTION_CTL));
+		RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfConnectionCtl, FLUSH);
 #endif /* defined(SUPPORT_AUTOVZ) && !defined(SUPPORT_AUTOVZ_HW_REGS) */
 
 		if (PVRSRV_VZ_MODE_IS(GUEST) || (psDeviceNode->bAutoVzFwIsUp))
@@ -513,6 +526,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 			{
 				/* Take the VZ connection down to prevent firmware from submitting further interrupts */
 				KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
+				KM_CONNECTION_CACHEOP(Os, FLUSH);
 			}
 			/* Power transition callbacks were not executed, update RGXPowered flag here */
 			psDevInfo->bRGXPowered = IMG_FALSE;
@@ -522,7 +536,10 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 	{
 		/* powering up */
 		IMG_UINT32 ui32FwTimeout = (3 * SECONDS_TO_MICROSECONDS);
-		volatile IMG_BOOL *pbUpdatedFlag = &psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated;
+		volatile IMG_BOOL *pbUpdatedFlag;
+		RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated,
+		                           INVALIDATE);
+		pbUpdatedFlag = &psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated;
 
 		PVR_DPF((PVR_DBG_WARNING, "%s: %s driver powering up: bAutoVzFwIsUp = %s",
 								__func__, PVRSRV_VZ_MODE_IS(GUEST)? "GUEST" : "HOST",
@@ -535,6 +552,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 #if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS)
 			/* Guest drivers expect the firmware to have set its end of the
 			 * connection to Ready state by now. */
+			KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
 			if (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
 				PVR_DPF((PVR_DBG_WARNING, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
@@ -542,6 +560,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 
 			LOOP_UNTIL_TIMEOUT(RGX_VZ_CONNECTION_TIMEOUT_US)
 			{
+				KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
 				if (KM_FW_CONNECTION_IS(READY, psDevInfo))
 				{
 					PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
@@ -553,6 +572,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 				}
 			} END_LOOP_UNTIL_TIMEOUT();
 
+			KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
 			if (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
 				PVR_DPF((PVR_DBG_ERROR, "%s: Timed out waiting for the Firmware to enter Ready state.", __func__));
@@ -563,6 +583,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 			/* Guests can only access the register holding the connection states,
 			 * after the GPU is confirmed to be powered up */
 			KM_SET_OS_CONNECTION(READY, psDevInfo);
+			KM_CONNECTION_CACHEOP(Os, FLUSH);
 
 			OSWriteDeviceMem32WithWMB(pbUpdatedFlag, IMG_FALSE);
 
@@ -583,6 +604,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 		else
 		{
 			KM_SET_OS_CONNECTION(READY, psDevInfo);
+			KM_CONNECTION_CACHEOP(Os, FLUSH);
 
 #if defined(SUPPORT_AUTOVZ)
 			/* Disable power callbacks that should not be run on virtualised drivers after the GPU
@@ -601,6 +623,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 		/* Wait for the firmware to accept and enable the connection with this OS by setting its state to Active */
 		LOOP_UNTIL_TIMEOUT(RGX_VZ_CONNECTION_TIMEOUT_US)
 		{
+			KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
 			if (KM_FW_CONNECTION_IS(ACTIVE, psDevInfo))
 			{
 				PVR_DPF((PVR_DBG_WARNING, "%s: Firmware Connection is Active. Initialisation proceeding.", __func__));
@@ -613,6 +636,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 			}
 		} END_LOOP_UNTIL_TIMEOUT();
 
+		KM_CONNECTION_CACHEOP(Fw, INVALIDATE);
 		if (!KM_FW_CONNECTION_IS(ACTIVE, psDevInfo))
 		{
 			PVR_DPF((PVR_DBG_ERROR, "%s: Timed out waiting for the Firmware to enter Active state.", __func__));
@@ -632,6 +656,7 @@ PVRSRV_ERROR RGXVzPostPowerState(IMG_HANDLE				hDevHandle,
 		PVR_LOG_RETURN_IF_FALSE(*pbUpdatedFlag, "Firmware does not respond with compatibility data. ", PVRSRV_ERROR_TIMEOUT);
 
 		KM_SET_OS_CONNECTION(ACTIVE, psDevInfo);
+		KM_CONNECTION_CACHEOP(Os, FLUSH);
 	}
 
 	return PVRSRV_OK;
@@ -771,6 +796,7 @@ static PVRSRV_ERROR RGXVirtualisationPowerupSidebandTest(PVRSRV_DEVICE_NODE	 *ps
 
 		/* Force a read-back to memory to avoid posted writes on certain buses */
 		OSWriteMemoryBarrier(&psFwSysInit->ui32OSKickTest);
+		RGXFwSharedMemCacheOpValue(psFwSysInit->ui32OSKickTest, FLUSH);
 
 		/* kick register */
 		ui32ScheduleRegister = RGX_CR_MTS_SCHEDULE + (ui32OSid * RGX_VIRTUALISATION_REG_SIZE_PER_OS);
@@ -801,7 +827,8 @@ static PVRSRV_ERROR RGXVirtualisationPowerupSidebandTest(PVRSRV_DEVICE_NODE	 *ps
 								 (volatile IMG_UINT32 __iomem *)&psFwSysInit->ui32OSKickTest,
 								 0,
 								 RGXFWIF_KICK_TEST_ENABLED_BIT,
-								 POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP) != PVRSRV_OK)
+								 POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP,
+								 RGXFwSharedMemCacheOpExecPfn) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "Testing OS %u kick register failed: firmware did not clear test location (contents: 0x%X)",
 					 ui32OSid,
@@ -968,11 +995,14 @@ PVRSRV_ERROR RGXPostPowerState(IMG_HANDLE				hDevHandle,
 			/*
 			 * Check whether the FW has started by polling on bFirmwareStarted flag
 			 */
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfSysInit->bFirmwareStarted,
+			                           INVALIDATE);
 			if (PVRSRVPollForValueKM(psDeviceNode,
 			                         (IMG_UINT32 __iomem *)&psDevInfo->psRGXFWIfSysInit->bFirmwareStarted,
 			                         IMG_TRUE,
 			                         0xFFFFFFFF,
-			                         POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP) != PVRSRV_OK)
+			                         POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP,
+			                         RGXFwSharedMemCacheOpExecPfn) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "RGXPostPowerState: Polling for 'FW started' flag failed."));
 				eError = PVRSRV_ERROR_TIMEOUT;
@@ -1037,10 +1067,16 @@ PVRSRV_ERROR RGXPostPowerState(IMG_HANDLE				hDevHandle,
 #endif
 
 #if defined(PVRSRV_ENABLE_PROCESS_STATS)
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfSysInit->ui32FirmwareStartedTimeStamp,
+			                           INVALIDATE);
 			PVRSRVSetFirmwareStartTime(psDeviceNode->psPowerDev,
 			                           psDevInfo->psRGXFWIfSysInit->ui32FirmwareStartedTimeStamp);
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfSysInit->ui32FirmwareStartedTimeStamp,
+			                           FLUSH);
 #endif
 
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfSysInit->ui32MarkerVal,
+			                           INVALIDATE);
 			HTBSyncPartitionMarker(psDevInfo->psRGXFWIfSysInit->ui32MarkerVal);
 
 			psDevInfo->bRGXPowered = IMG_TRUE;
@@ -1080,6 +1116,9 @@ PVRSRV_ERROR RGXPreClockSpeedChange(IMG_HANDLE				hDevHandle,
 	PVR_DPF((PVR_DBG_MESSAGE, "RGXPreClockSpeedChange: RGX clock speed was %uHz",
 			psRGXData->psRGXTimingInfo->ui32CoreClockSpeed));
 
+	RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+	                           INVALIDATE);
+
 	if ((eCurrentPowerState != PVRSRV_DEV_POWER_STATE_OFF) &&
 	    (psFwSysData->ePowState != RGXFWIF_POW_OFF))
 	{
@@ -1108,7 +1147,10 @@ PVRSRV_ERROR RGXPostClockSpeedChange(IMG_HANDLE				hDevHandle,
 	/* Update runtime configuration with the new value */
 	OSWriteDeviceMem32WithWMB(&psDevInfo->psRGXFWIfRuntimeCfg->ui32CoreClockSpeed,
 	                          ui32NewClockSpeed);
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfRuntimeCfg->ui32CoreClockSpeed, FLUSH);
 
+	RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+	                           INVALIDATE);
 	if ((eCurrentPowerState != PVRSRV_DEV_POWER_STATE_OFF) &&
 	    (psFwSysData->ePowState != RGXFWIF_POW_OFF))
 	{
@@ -1185,10 +1227,13 @@ PVRSRV_ERROR RGXDustCountChange(IMG_HANDLE		hDevHandle,
 
 	psRuntimeCfg->ui32DefaultDustsNumInit = ui32NumberOfDusts;
 	OSWriteMemoryBarrier(&psRuntimeCfg->ui32DefaultDustsNumInit);
+	RGXFwSharedMemCacheOpValue(psRuntimeCfg->ui32DefaultDustsNumInit, FLUSH);
 
 #if !defined(NO_HARDWARE)
 	{
 		const RGXFWIF_SYSDATA *psFwSysData = psDevInfo->psRGXFWIfFwSysData;
+		RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+		                           INVALIDATE);
 
 		if (psFwSysData->ePowState == RGXFWIF_POW_OFF)
 		{
@@ -1293,6 +1338,8 @@ PVRSRV_ERROR RGXAPMLatencyChange(IMG_HANDLE		hDevHandle,
 	psRuntimeCfg->ui32ActivePMLatencyms = ui32ActivePMLatencyms;
 	psRuntimeCfg->bActivePMLatencyPersistant = bActivePMLatencyPersistant;
 	OSWriteMemoryBarrier(&psRuntimeCfg->bActivePMLatencyPersistant);
+	RGXFwSharedMemCacheOpValue(psRuntimeCfg->ui32ActivePMLatencyms, FLUSH);
+	RGXFwSharedMemCacheOpValue(psRuntimeCfg->bActivePMLatencyPersistant, FLUSH);
 
 	eError = PVRSRVGetDevicePowerState(psDeviceNode, &ePowerState);
 
@@ -1360,6 +1407,9 @@ PVRSRV_ERROR RGXActivePowerRequest(IMG_HANDLE hDevHandle)
 		goto _RGXActivePowerRequest_PowerLock_failed;
 	}
 
+	RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+	                           INVALIDATE);
+
 	/* Check again for IDLE once we have the power lock */
 	if (psFwSysData->ePowState == RGXFWIF_POW_IDLE)
 	{
@@ -1415,6 +1465,8 @@ PVRSRV_ERROR RGXForcedIdleRequest(IMG_HANDLE hDevHandle, IMG_BOOL bDeviceOffPerm
 
 #if !defined(NO_HARDWARE)
 	psFwSysData = psDevInfo->psRGXFWIfFwSysData;
+	RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+	                           INVALIDATE);
 
 	/* Firmware already forced idle */
 	if (psFwSysData->ePowState == RGXFWIF_POW_FORCED_IDLE)
@@ -1493,6 +1545,8 @@ PVRSRV_ERROR RGXForcedIdleRequest(IMG_HANDLE hDevHandle, IMG_BOOL bDeviceOffPerm
 
 #if !defined(NO_HARDWARE)
 	/* Check the firmware state for idleness */
+	RGXFwSharedMemCacheOpValue(psFwSysData->ePowState,
+	                           INVALIDATE);
 	if (psFwSysData->ePowState != RGXFWIF_POW_FORCED_IDLE)
 	{
 		return PVRSRV_ERROR_DEVICE_IDLE_REQUEST_DENIED;

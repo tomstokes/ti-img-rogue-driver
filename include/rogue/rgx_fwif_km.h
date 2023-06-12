@@ -323,9 +323,11 @@ typedef struct
 	IMG_UINT32                 ui32ConfigFlags;                       /*!< Configuration flags from host */
 	IMG_UINT32                 ui32ConfigFlagsExt;                    /*!< Extended configuration flags from host */
 	volatile RGXFWIF_POW_STATE ePowState;
-	volatile IMG_UINT32        ui32HWPerfRIdx;
-	volatile IMG_UINT32        ui32HWPerfWIdx;
-	volatile IMG_UINT32        ui32HWPerfWrapCount;
+	struct {
+		volatile IMG_UINT32        ui32HWPerfRIdx;
+		volatile IMG_UINT32        ui32HWPerfWIdx;
+		volatile IMG_UINT32        ui32HWPerfWrapCount;
+	} sHWPerfCtrl; /* Struct used to inval/flush HWPerfCtrl members */
 	IMG_UINT32                 ui32HWPerfSize;                        /*!< Constant after setup, needed in FW */
 	IMG_UINT32                 ui32HWPerfDropCount;                   /*!< The number of times the FW drops a packet due to buffer full */
 
@@ -2593,7 +2595,9 @@ static_assert((RGX_FW_HEAP_OSID_ASSIGNMENT == RGX_FW_HEAP_USES_FIRMWARE_OSID),
 
 #if defined(__KERNEL__)
 /* Driver implementation */
-#define FOREACH_ACTIVE_DRIVER(devinfo, did)        FOREACH_SUPPORTED_DRIVER(did)                                \
+#define FOREACH_ACTIVE_DRIVER(devinfo, did)        RGXFwSharedMemCacheOpValue(psFwSysData->asOsRuntimeFlagsMirror[RGXFW_HOST_DRIVER_ID], \
+                                                                              INVALIDATE); \
+                                                   FOREACH_SUPPORTED_DRIVER(did)                                \
                                                    {                                                            \
                                                    if (devinfo->psRGXFWIfFwSysData->asOsRuntimeFlagsMirror[did].bfOsState != RGXFW_CONNECTION_FW_ACTIVE) continue;
 

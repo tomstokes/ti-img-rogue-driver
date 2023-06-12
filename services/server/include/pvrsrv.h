@@ -190,6 +190,8 @@ typedef struct PVRSRV_DATA_TAG
 	IMG_UINT32            ui32PDumpBoundDevice;           /*!< PDump is bound to the device first connected to */
 } PVRSRV_DATA;
 
+/* Function pointer used to invalidate cache between loops in wait/poll for value functions */
+typedef PVRSRV_ERROR (*PFN_INVALIDATE_CACHEFUNC)(const volatile void*, IMG_UINT64, PVRSRV_CACHE_OP);
 
 /*!
 ******************************************************************************
@@ -323,6 +325,8 @@ PVRSRV_ERROR LMA_HeapIteratorGetHeapStats(PHYS_HEAP_ITERATOR *psIter,
         also used by debug-dumping code, this argument MUST be IMG_FALSE
         otherwise, we might end up requesting debug-dump in recursion and
         eventually blow-up call stack.
+ @Input pfnFwInvalidate : Function pointer to invalidation function used
+        each loop / poll. This is only used for FWmemctx allocations.
 
  @Return   PVRSRV_ERROR :
 ******************************************************************************/
@@ -330,7 +334,8 @@ PVRSRV_ERROR PVRSRVPollForValueKM(PVRSRV_DEVICE_NODE *psDevNode,
 		volatile IMG_UINT32 __iomem *pui32LinMemAddr,
 		IMG_UINT32                   ui32Value,
 		IMG_UINT32                   ui32Mask,
-		POLL_FLAGS                   ePollFlags);
+		POLL_FLAGS                   ePollFlags,
+		PFN_INVALIDATE_CACHEFUNC     pfnFwInvalidate);
 
 /*!
 ******************************************************************************
@@ -343,12 +348,16 @@ PVRSRV_ERROR PVRSRVPollForValueKM(PVRSRV_DEVICE_NODE *psDevNode,
  @Input  ui32Value             : Required value
  @Input  ui32Mask              : Mask to be applied before checking against
                                  ui32Value
+ @Input  pfnFwInvalidate       : Function pointer to invalidation function used
+                                 each loop / wait. This is only used for
+                                 FWmemctx allocations.
  @Return PVRSRV_ERROR          :
 ******************************************************************************/
 PVRSRV_ERROR
 PVRSRVWaitForValueKM(volatile IMG_UINT32 __iomem *pui32LinMemAddr,
                      IMG_UINT32                  ui32Value,
-                     IMG_UINT32                  ui32Mask);
+                     IMG_UINT32                  ui32Mask,
+                     PFN_INVALIDATE_CACHEFUNC    pfnFwInvalidate);
 
 /*!
 ******************************************************************************

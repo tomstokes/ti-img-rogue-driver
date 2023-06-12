@@ -345,7 +345,8 @@ PVRSRV_ERROR RGXPollReg32(const void *hPrivate,
 		                         (IMG_UINT32 __iomem *)((IMG_UINT8 __iomem *)pvRegsBase + ui32RegAddr),
 		                         ui32RegValue,
 		                         ui32RegMask,
-		                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+		                         POLL_FLAG_LOG_ERROR,
+		                         NULL) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "RGXPollReg32: Poll for Reg (0x%x) failed", ui32RegAddr));
 			return PVRSRV_ERROR_TIMEOUT;
@@ -392,7 +393,8 @@ PVRSRV_ERROR RGXPollReg64(const void *hPrivate,
 		                         (IMG_UINT32 __iomem *)((IMG_UINT8 __iomem *)pvRegsBase + ui32RegAddr + 4),
 		                         ui32UpperValue,
 		                         ui32UpperMask,
-		                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+		                         POLL_FLAG_LOG_ERROR,
+		                         NULL) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "RGXPollReg64: Poll for upper part of Reg (0x%x) failed", ui32RegAddr));
 			return PVRSRV_ERROR_TIMEOUT;
@@ -402,7 +404,8 @@ PVRSRV_ERROR RGXPollReg64(const void *hPrivate,
 		                         (IMG_UINT32 __iomem *)((IMG_UINT8 __iomem *)pvRegsBase + ui32RegAddr),
 		                         ui32LowerValue,
 		                         ui32LowerMask,
-		                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+		                         POLL_FLAG_LOG_ERROR,
+		                         NULL) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "RGXPollReg64: Poll for lower part of Reg (0x%x) failed", ui32RegAddr));
 			return PVRSRV_ERROR_TIMEOUT;

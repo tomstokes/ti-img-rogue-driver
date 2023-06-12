@@ -3348,9 +3348,9 @@ static PVRSRV_ERROR RGXSetupFwSysData(PVRSRV_DEVICE_NODE       *psDeviceNode,
 		}
 
 		/* init HWPERF data */
-		psDevInfo->psRGXFWIfFwSysData->ui32HWPerfRIdx = 0;
-		psDevInfo->psRGXFWIfFwSysData->ui32HWPerfWIdx = 0;
-		psDevInfo->psRGXFWIfFwSysData->ui32HWPerfWrapCount = 0;
+		psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl.ui32HWPerfRIdx = 0;
+		psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl.ui32HWPerfWIdx = 0;
+		psDevInfo->psRGXFWIfFwSysData->sHWPerfCtrl.ui32HWPerfWrapCount = 0;
 		psDevInfo->psRGXFWIfFwSysData->ui32HWPerfSize = psDevInfo->ui32RGXFWIfHWPerfBufSize;
 		psDevInfo->psRGXFWIfFwSysData->ui32HWPerfUt = 0;
 		psDevInfo->psRGXFWIfFwSysData->ui32HWPerfDropCount = 0;
@@ -4251,7 +4251,8 @@ PVRSRV_ERROR RGXWaitForKCCBSlotUpdate(PVRSRV_RGXDEV_INFO *psDevInfo,
 	eError = PVRSRVWaitForValueKM(
 	              (IMG_UINT32 __iomem *)&psDevInfo->pui32KernelCCBRtnSlots[ui32SlotNum],
 				  RGXFWIF_KCCB_RTN_SLOT_CMD_EXECUTED,
-				  RGXFWIF_KCCB_RTN_SLOT_CMD_EXECUTED);
+				  RGXFWIF_KCCB_RTN_SLOT_CMD_EXECUTED,
+				  RGXFwSharedMemCacheOpExecPfn);
 	PVR_LOG_RETURN_IF_ERROR(eError, "PVRSRVWaitForValueKM");
 
 #if defined(PDUMP)
@@ -4312,7 +4313,8 @@ static PVRSRV_ERROR RGXSendCommandRaw(PVRSRV_RGXDEV_INFO  *psDevInfo,
 				PVRSRVPollForValueKM(psDeviceNode,
 				                     (IMG_UINT32 __iomem *)&psKCCBCtl->ui32ReadOffset,
 				                     ui32OldWriteOffset, 0xFFFFFFFF,
-				                     POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP);
+				                     POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP,
+				                     NULL);
 
 				/* Dump Init state of Kernel CCB control (read and write offset) */
 				PDUMPCOMMENTWITHFLAGS(psDeviceNode, uiPDumpFlags,
@@ -5483,7 +5485,7 @@ PVRSRV_ERROR RGXPollForGPCommandCompletion(PVRSRV_DEVICE_NODE  *psDevNode,
 		 * does not generate an error message. In this case, the PollForValueKM is expected to
 		 * timeout as there is work ongoing on the GPU which may take longer than the timeout period.
 		 */
-		eError = PVRSRVPollForValueKM(psDevNode, pui32LinMemAddr, ui32Value, ui32Mask, POLL_FLAG_NONE);
+		eError = PVRSRVPollForValueKM(psDevNode, pui32LinMemAddr, ui32Value, ui32Mask, POLL_FLAG_NONE, NULL);
 		if (eError != PVRSRV_ERROR_TIMEOUT)
 		{
 			break;
@@ -7188,7 +7190,7 @@ PVRSRV_ERROR RGXRiscvHalt(PVRSRV_RGXDEV_INFO *psDevInfo)
 	                         pui32RegsBase + ui32_DMI_DMSTATUS_Reg/sizeof(IMG_UINT32),
 	                         RGX_CR_FWCORE_DMI_DMSTATUS_ALLHALTED_EN,
 	                         RGX_CR_FWCORE_DMI_DMSTATUS_ALLHALTED_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Hart not halted (0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_DMSTATUS_Reg)));
@@ -7284,7 +7286,7 @@ PVRSRV_ERROR RGXRiscvResume(PVRSRV_RGXDEV_INFO *psDevInfo)
 	                         pui32RegsBase + ui32_DMI_DMSTATUS_Reg/sizeof(IMG_UINT32),
 	                         RGX_CR_FWCORE_DMI_DMSTATUS_ALLRESUMEACK_EN,
 	                         RGX_CR_FWCORE_DMI_DMSTATUS_ALLRESUMEACK_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Hart not resumed (0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_DMSTATUS_Reg)));
@@ -7395,7 +7397,7 @@ PVRSRV_ERROR RGXRiscvReadReg(PVRSRV_RGXDEV_INFO *psDevInfo,
 	                         pui32RegsBase + ui32_DMI_ABSTRACTCS_Reg/sizeof(IMG_UINT32),
 	                         0U,
 	                         RGX_CR_FWCORE_DMI_ABSTRACTCS_BUSY_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Abstract command did not complete in time (abstractcs = 0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_ABSTRACTCS_Reg)));
@@ -7550,7 +7552,7 @@ PVRSRV_ERROR RGXRiscvWriteReg(PVRSRV_RGXDEV_INFO *psDevInfo,
 	                         pui32RegsBase + ui32_DMI_ABSTRACTCS_Reg/sizeof(IMG_UINT32),
 	                         0U,
 	                         RGX_CR_FWCORE_DMI_ABSTRACTCS_BUSY_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Abstract command did not complete in time (abstractcs = 0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_ABSTRACTCS_Reg)));
@@ -7662,7 +7664,7 @@ RGXRiscvReadAbstractMem(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 ui32Addr, IMG_
 	                         pui32RegsBase + ui32_DMI_ABSTRACTCS_Reg/sizeof(IMG_UINT32),
 	                         0U,
 	                         RGX_CR_FWCORE_DMI_ABSTRACTCS_BUSY_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Abstract command did not complete in time (abstractcs = 0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_ABSTRACTCS_Reg)));
@@ -7812,7 +7814,7 @@ RGXRiscvReadSysBusMem(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 ui32Addr, IMG_UI
 	                         pui32RegsBase + ui32_DMI_SBCS_Reg/sizeof(IMG_UINT32),
 	                         0U,
 	                         RGX_CR_FWCORE_DMI_SBCS_SBBUSY_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: System Bus did not go idle in time (sbcs = 0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_SBCS_Reg)));
@@ -8043,7 +8045,7 @@ RGXRiscvWriteAbstractMem(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 ui32Addr, IMG
 	                         pui32RegsBase + ui32_DMI_ABSTRACTCS_Reg/sizeof(IMG_UINT32),
 	                         0U,
 	                         RGX_CR_FWCORE_DMI_ABSTRACTCS_BUSY_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Abstract command did not complete in time (abstractcs = 0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_ABSTRACTCS_Reg)));
@@ -8130,7 +8132,7 @@ RGXRiscvWriteSysBusMem(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 ui32Addr, IMG_U
 	                         pui32RegsBase + ui32_DMI_SBCS_Reg/sizeof(IMG_UINT32),
 	                         0U,
 	                         RGX_CR_FWCORE_DMI_SBCS_SBBUSY_EN,
-	                         POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	                         POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: System Bus did not go idle in time (sbcs = 0x%x)",
 		         __func__, OSReadUncheckedHWReg32(psDevInfo->pvSecureRegsBaseKM, ui32_DMI_SBCS_Reg)));
@@ -8342,7 +8344,8 @@ static PVRSRV_ERROR RGXReadMETAAddr(PVRSRV_RGXDEV_INFO	*psDevInfo, IMG_UINT32 ui
 			(IMG_UINT32 __iomem *) (pui8RegBase + ui32PollRegOffset),
 	        ui32PollValue,
 	        ui32PollMask,
-	        POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	        POLL_FLAG_LOG_ERROR,
+	        NULL) != PVRSRV_OK)
 	{
 		return PVRSRV_ERROR_TIMEOUT;
 	}
@@ -8356,7 +8359,8 @@ static PVRSRV_ERROR RGXReadMETAAddr(PVRSRV_RGXDEV_INFO	*psDevInfo, IMG_UINT32 ui
 			(IMG_UINT32 __iomem *) (pui8RegBase + ui32PollRegOffset),
 	        ui32PollValue,
 	        ui32PollMask,
-	        POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+	        POLL_FLAG_LOG_ERROR,
+	        NULL) != PVRSRV_OK)
 	{
 		return PVRSRV_ERROR_TIMEOUT;
 	}
@@ -8387,7 +8391,7 @@ static PVRSRV_ERROR RGXWriteMETAAddr(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 u
 					| RGX_CR_META_SP_MSLVCTRL1__HOST_SECURITY_GT1_AND_METAREG_UNPACKED__GBLPORT_IDLE_EN,
 					RGX_CR_META_SP_MSLVCTRL1__HOST_SECURITY_GT1_AND_METAREG_UNPACKED__READY_EN
 					| RGX_CR_META_SP_MSLVCTRL1__HOST_SECURITY_GT1_AND_METAREG_UNPACKED__GBLPORT_IDLE_EN,
-					POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+					POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 			{
 				return PVRSRV_ERROR_TIMEOUT;
 			}
@@ -8406,7 +8410,7 @@ static PVRSRV_ERROR RGXWriteMETAAddr(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 u
 					| RGX_CR_META_SP_MSLVCTRL1__HOST_SECURITY_V1_AND_METAREG_UNPACKED__GBLPORT_IDLE_EN,
 					RGX_CR_META_SP_MSLVCTRL1__HOST_SECURITY_V1_AND_METAREG_UNPACKED__READY_EN
 					| RGX_CR_META_SP_MSLVCTRL1__HOST_SECURITY_V1_AND_METAREG_UNPACKED__GBLPORT_IDLE_EN,
-					POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+					POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 			{
 				return PVRSRV_ERROR_TIMEOUT;
 			}
@@ -8424,7 +8428,7 @@ static PVRSRV_ERROR RGXWriteMETAAddr(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 u
 				(IMG_UINT32 __iomem *)(pui8RegBase + RGX_CR_META_SP_MSLVCTRL1),
 				RGX_CR_META_SP_MSLVCTRL1_READY_EN|RGX_CR_META_SP_MSLVCTRL1_GBLPORT_IDLE_EN,
 				RGX_CR_META_SP_MSLVCTRL1_READY_EN|RGX_CR_META_SP_MSLVCTRL1_GBLPORT_IDLE_EN,
-				POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
+				POLL_FLAG_LOG_ERROR, NULL) != PVRSRV_OK)
 		{
 			return PVRSRV_ERROR_TIMEOUT;
 		}

@@ -667,6 +667,7 @@ PVRSRV_ERROR RGXRegisterMemoryContext(PVRSRV_DEVICE_NODE	*psDeviceNode,
 		/*
 		 * Release kernel address acquired above.
 		 */
+		RGXFwSharedMemCacheOpPtr(psFWMemContext, FLUSH);
 		DevmemReleaseCpuVirtAddr(psFWMemContextMemDesc);
 
 		/*

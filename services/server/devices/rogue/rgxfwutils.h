@@ -56,6 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgxta3d.h"
 #include "devicemem_utils.h"
 #include "rgxmem.h"
+#include "rgxfwmemctx.h"
 
 #define RGX_FIRMWARE_GUEST_RAW_HEAP_IDENT   "FwRawDriverID%d" /*!< RGX Raw Firmware Heap identifier */
 
@@ -163,6 +164,9 @@ static INLINE PVRSRV_ERROR DevmemFwAllocate(PVRSRV_RGXDEV_INFO *psDevInfo,
 				: GET_ROGUE_CACHE_LINE_SIZE(RGX_GET_FEATURE_VALUE(psDevInfo, SLC_CACHE_LINE_SIZE_BITS));
 	}
 
+	RGXFwSharedMemCPUCacheMode(psDevInfo->psDeviceNode,
+	                           &uiFlags);
+
 	eError = DevmemAllocateAndMap(psFwHeap,
 				uiSize,
 				uiAlign,
@@ -201,6 +205,9 @@ static INLINE PVRSRV_ERROR DevmemFwAllocateExportable(PVRSRV_DEVICE_NODE *psDevi
 	{
 		PVR_DPF_RETURN_RC(eError);
 	}
+
+	RGXFwSharedMemCPUCacheMode(psDevInfo->psDeviceNode,
+	                           &uiFlags);
 
 	eError = DevmemAllocateExportable(psDeviceNode,
 									  uiSize,
@@ -261,6 +268,9 @@ static INLINE PVRSRV_ERROR DevmemFwAllocateSparse(PVRSRV_RGXDEV_INFO *psDevInfo,
 	{
 		PVR_DPF_RETURN_RC(eError);
 	}
+
+	RGXFwSharedMemCPUCacheMode(psDevInfo->psDeviceNode,
+	                           &uiFlags);
 
 	eError = DevmemAllocateSparse(psDevInfo->psDeviceNode,
 								uiSize,
@@ -1378,24 +1388,40 @@ PVRSRV_ERROR RGXFWInjectFault(PVRSRV_RGXDEV_INFO *psDevInfo);
 #define KM_GET_OS_ALIVE_TOKEN(psDevInfo)			OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH0)
 #define KM_SET_OS_ALIVE_TOKEN(val, psDevInfo)		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH0, val)
 
+#define KM_ALIVE_TOKEN_CACHEOP(Target, CacheOp)
+#define KM_CONNECTION_CACHEOP(Target, CacheOp)
+
 #else
 
 #if defined(SUPPORT_AUTOVZ)
 #define KM_GET_FW_ALIVE_TOKEN(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->ui32AliveFwToken)
 #define KM_GET_OS_ALIVE_TOKEN(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->ui32AliveOsToken)
-#define KM_SET_OS_ALIVE_TOKEN(val, psDevInfo)		OSWriteDeviceMem32WithWMB((volatile IMG_UINT32 *) &psDevInfo->psRGXFWIfConnectionCtl->ui32AliveOsToken, val)
+#define KM_SET_OS_ALIVE_TOKEN(val, psDevInfo)		do { \
+                                                    OSWriteDeviceMem32WithWMB((volatile IMG_UINT32 *) &psDevInfo->psRGXFWIfConnectionCtl->ui32AliveOsToken, val); \
+                                                    KM_ALIVE_TOKEN_CACHEOP(Os, FLUSH); \
+                                                    } while (0)
+
+#define KM_ALIVE_TOKEN_CACHEOP(Target, CacheOp)     RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfConnectionCtl->ui32Alive##Target##Token, \
+													                           CacheOp);
 #endif /* defined(SUPPORT_AUTOVZ) */
 
 #if !defined(NO_HARDWARE) && (defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (defined(RGX_NUM_DRIVERS_SUPPORTED) && (RGX_NUM_DRIVERS_SUPPORTED == 1)))
 /* native, static-vz and AutoVz using shared memory */
 #define KM_GET_FW_CONNECTION(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionFwState)
 #define KM_GET_OS_CONNECTION(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState)
-#define KM_SET_OS_CONNECTION(val, psDevInfo)	OSWriteDeviceMem32WithWMB((void*)&psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState, RGXFW_CONNECTION_OS_##val)
+#define KM_SET_OS_CONNECTION(val, psDevInfo)	do { \
+                                                OSWriteDeviceMem32WithWMB((void*)&psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState, RGXFW_CONNECTION_OS_##val); \
+                                                KM_CONNECTION_CACHEOP(Os, FLUSH); \
+                                                } while (0)
+
+#define KM_CONNECTION_CACHEOP(Target, CacheOp)  RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfConnectionCtl->eConnection##Target##State, \
+												                           CacheOp);
 #else
 /* dynamic-vz & nohw */
 #define KM_GET_FW_CONNECTION(psDevInfo)			(RGXFW_CONNECTION_FW_ACTIVE)
 #define KM_GET_OS_CONNECTION(psDevInfo)			(RGXFW_CONNECTION_OS_ACTIVE)
 #define KM_SET_OS_CONNECTION(val, psDevInfo)
+#define KM_CONNECTION_CACHEOP(Target, CacheOp)
 #endif /* defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (RGX_NUM_DRIVERS_SUPPORTED == 1) */
 #endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
 

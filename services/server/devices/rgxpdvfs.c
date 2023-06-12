@@ -238,6 +238,8 @@ PVRSRV_ERROR PDVFSProcessCoreClkChangeNotification(PVRSRV_RGXDEV_INFO *psDevInfo
 	}
 
 	/* Guest drivers do not initialize psRGXFWIfFwSysData */
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->ePowState,
+	                           INVALIDATE);
 	if ((ePowerState != PVRSRV_DEV_POWER_STATE_OFF)
 	    && ((psDevInfo->psRGXFWIfFwSysData == NULL) || (psDevInfo->psRGXFWIfFwSysData->ePowState != RGXFWIF_POW_OFF)))
 	{

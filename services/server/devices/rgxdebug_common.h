@@ -50,6 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvr_notifier.h"
 #include "pvrsrv.h"
 #include "rgxdevice.h"
+#include "rgxfwmemctx.h"
 
 #define DD_NORMAL_INDENT   "    "
 
@@ -82,8 +83,11 @@ extern const IMG_CHAR * const gapszMipsDirtyGlobalValidPTFlags[8];
 	for (ui32idx = 0; ui32idx < RGXFW_THREAD_NUM; ui32idx++)
 
 #define get_irq_cnt_val(ui32Dest, ui32idx, psRgxDevInfo) \
-	ui32Dest = (psRgxDevInfo)->psRGXFWIfFwOsData->aui32InterruptCount[ui32idx]
-
+	do { \
+		RGXFwSharedMemCacheOpValue(psRgxDevInfo->psRGXFWIfFwOsData->aui32InterruptCount[ui32idx], \
+		                           INVALIDATE); \
+		ui32Dest = (psRgxDevInfo)->psRGXFWIfFwOsData->aui32InterruptCount[ui32idx]; \
+	} while (false)
 #define MSG_IRQ_CNT_TYPE "Thread"
 #endif /* RGX_FW_IRQ_OS_COUNTERS */
 

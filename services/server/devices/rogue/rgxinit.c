@@ -304,7 +304,11 @@ static void RGXSafetyEventHandler(PVRSRV_RGXDEV_INFO *psDevInfo)
 
 		if (BIT_ISSET(ui32HostSafetyStatus, RGX_CR_SAFETY_EVENT_STATUS__ROGUEXE__WATCHDOG_TIMEOUT_SHIFT))
 		{
-			volatile RGXFWIF_POW_STATE ePowState = psDevInfo->psRGXFWIfFwSysData->ePowState;
+			volatile RGXFWIF_POW_STATE ePowState;
+
+			RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->ePowState,
+			                           INVALIDATE);
+			ePowState = psDevInfo->psRGXFWIfFwSysData->ePowState;
 
 			if (ePowState != RGXFWIF_POW_OFF)
 			{
@@ -558,8 +562,12 @@ static void RGX_MISRHandler_CheckFWActivePowerState(void *psDevice)
 {
 	PVRSRV_DEVICE_NODE *psDeviceNode = psDevice;
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
-	const RGXFWIF_SYSDATA *psFwSysData = psDevInfo->psRGXFWIfFwSysData;
+	const RGXFWIF_SYSDATA *psFwSysData;
 	PVRSRV_ERROR eError = PVRSRV_OK;
+
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->ePowState,
+	                           INVALIDATE);
+	psFwSysData = psDevInfo->psRGXFWIfFwSysData;
 
 	if (psFwSysData->ePowState == RGXFWIF_POW_ON || psFwSysData->ePowState == RGXFWIF_POW_IDLE)
 	{
@@ -648,6 +656,7 @@ static PVRSRV_ERROR RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNode,
 	PVR_LOG_GOTO_IF_FALSE(paui64DMOSTmpLastPeriod != NULL, "OSAllocMem:4", failTmpLastPeriodAlloc);
 	paui64DMOSTmpLastTime   = OSAllocMem(sizeof(*paui64DMOSTmpLastTime) * ui32MaxDMCount);
 	PVR_LOG_GOTO_IF_FALSE(paui64DMOSTmpLastTime != NULL, "OSAllocMem:5", failTmpLastTimeAlloc);
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfGpuUtilFWCb, INVALIDATE);
 
 	/* Try to acquire GPU utilisation counters and repeat if the FW is in the middle of an update */
 	for (ui32Attempts = 0; ui32Attempts < 4; ui32Attempts++)
@@ -1763,6 +1772,8 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 	psDeviceNode->pfnRegisterMemoryContext = RGXRegisterMemoryContext;
 	psDeviceNode->pfnUnregisterMemoryContext = RGXUnregisterMemoryContext;
 
+	RGXFwSharedMemCheckSnoopMode(psDevInfo->psDeviceNode->psDevConfig);
+
 	/* Create the memory context for the firmware. */
 	eError = DevmemCreateContext(psDeviceNode, DEVMEM_HEAPCFG_FORFW,
 	                             &psDevInfo->psKernelDevmemCtx);
@@ -1975,6 +1986,8 @@ static PVRSRV_ERROR RGXAlignmentCheck(PVRSRV_DEVICE_NODE *psDevNode,
 	}
 
 	paui32FWAlignChecks += ui32UMChecksOffset;
+	/* Invalidate the size value, check the next region size (UM) and invalidate */
+	RGXFwSharedMemCacheOpPtr(paui32FWAlignChecks, INVALIDATE);
 	if (*paui32FWAlignChecks++ != ui32AlignChecksSizeUM)
 	{
 		PVR_DPF((PVR_DBG_ERROR,
@@ -1986,6 +1999,10 @@ static PVRSRV_ERROR RGXAlignmentCheck(PVRSRV_DEVICE_NODE *psDevNode,
 		eError = PVRSRV_ERROR_INVALID_ALIGNMENT;
 		goto return_;
 	}
+
+	RGXFwSharedMemCacheOpExec(paui32FWAlignChecks,
+	                          ui32AlignChecksSizeUM * sizeof(IMG_UINT32),
+	                          PVRSRV_CACHE_OP_INVALIDATE);
 
 	for (i = 0; i < ui32AlignChecksSizeUM; i++)
 	{
@@ -2611,6 +2628,8 @@ static PVRSRV_ERROR RGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 	LOOP_UNTIL_TIMEOUT(ui32FwTimeout)
 	{
+		RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated,
+		                           INVALIDATE);
 		if (*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))
 		{
 			/* No need to wait if the FW has already updated the values */
@@ -2643,6 +2662,9 @@ static PVRSRV_ERROR RGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode)
 		}
 	}
 
+	/* Flush covers this instance and the reads in the functions below */
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfOsInit->sRGXCompChecks,
+	                           INVALIDATE);
 	if (!*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))
 	{
 		eError = PVRSRV_ERROR_TIMEOUT;
@@ -3497,8 +3519,10 @@ static void RGXFreeUFOBlock(PVRSRV_DEVICE_NODE *psDeviceNode,
 				         "%s: SLC flush and invalidate aborted with error (%u)",
 				         __func__,
 				         eError));
+				goto error_exit;
 			}
-			else if (unlikely(psDevInfo->pui32KernelCCBRtnSlots[ui32kCCBCommandSlot] &
+
+			if (unlikely(psDevInfo->pui32KernelCCBRtnSlots[ui32kCCBCommandSlot] &
 							  RGXFWIF_KCCB_RTN_SLOT_POLL_FAILURE))
 			{
 				PVR_DPF((PVR_DBG_WARNING, "%s: FW poll on a HW operation failed", __func__));
@@ -3506,6 +3530,7 @@ static void RGXFreeUFOBlock(PVRSRV_DEVICE_NODE *psDeviceNode,
 		}
 	}
 
+error_exit:
 	RGXUnsetFirmwareAddress(psMemDesc);
 	DevmemFwUnmapAndFree(psDevInfo, psMemDesc);
 }
@@ -3634,6 +3659,7 @@ PVRSRV_ERROR DevDeInitRGX(PVRSRV_DEVICE_NODE *psDeviceNode)
 	if (psDevInfo->psRGXFWIfOsInit)
 	{
 		KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
+		KM_CONNECTION_CACHEOP(Os, FLUSH);
 	}
 
 	DeviceDepBridgeDeInit(psDevInfo);

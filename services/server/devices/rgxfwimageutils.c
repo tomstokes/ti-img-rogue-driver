@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Any new code should be built on top of the existing abstraction layer,
  * which should be extended when necessary. */
 #include "rgxfwimageutils.h"
+#include "rgxfwutils.h"
 #include "pvrsrv.h"
 #include "pvrversion.h"
 
@@ -508,6 +509,7 @@ PVRSRV_ERROR ProcessLDRCommandStream(const void *hPrivate,
 					           pvWriteAddr,
 					           psL2Block->aui32BlockData,
 					           ui32DataSize);
+					RGXFwSharedMemCacheOpExec(pvWriteAddr, ui32DataSize, PVRSRV_CACHE_OP_FLUSH);
 				}
 
 				break;
@@ -558,6 +560,7 @@ PVRSRV_ERROR ProcessLDRCommandStream(const void *hPrivate,
 				if (pvWriteAddr)
 				{
 					RGXMemSet(hPrivate, pvWriteAddr, 0, ui32ByteCount);
+					RGXFwSharedMemCacheOpExec(pvWriteAddr, ui32ByteCount, PVRSRV_CACHE_OP_FLUSH);
 				}
 
 				break;
@@ -715,6 +718,8 @@ PVRSRV_ERROR ProcessELFCommandStream(const void *hPrivate,
 			          (IMG_PBYTE)pvWriteAddr + psProgramHeader->ui32Pfilesz,
 			          0,
 			          psProgramHeader->ui32Pmemsz - psProgramHeader->ui32Pfilesz);
+
+			RGXFwSharedMemCacheOpExec(pvWriteAddr, psProgramHeader->ui32Pmemsz, PVRSRV_CACHE_OP_FLUSH);
 		}
 	}
 

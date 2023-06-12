@@ -1031,6 +1031,7 @@ static PVRSRV_ERROR RGXReconstructFreeList(RGX_FREELIST *psFreeList)
 	psFWFreeList->ui32CurrentStackTop       = psFWFreeList->ui32CurrentPages - 1;
 	psFWFreeList->ui32AllocatedPageCount    = 0;
 	psFWFreeList->ui32AllocatedMMUPageCount = 0;
+	RGXFwSharedMemCacheOpPtr(psFWFreeList, FLUSH);
 
 	DevmemReleaseCpuVirtAddr(psFreeList->psFWFreelistMemDesc);
 
@@ -1173,6 +1174,8 @@ void RGXProcessRequestFreelistsReconstruction(PVRSRV_RGXDEV_INFO *psDevInfo,
 
 					psHWRTData->eState = RGXFWIF_RTDATA_STATE_HWR;
 					psHWRTData->ui32HWRTDataFlags &= ~HWRTDATA_HAS_LAST_TA;
+					RGXFwSharedMemCacheOpValue(psHWRTData->eState, FLUSH);
+					RGXFwSharedMemCacheOpValue(psHWRTData->ui32HWRTDataFlags, FLUSH);
 
 					DevmemReleaseCpuVirtAddr(psKMHWRTDataSet->psHWRTDataFwMemDesc);
 				}
@@ -1278,11 +1281,11 @@ static PVRSRV_ERROR RGXCreateHWRTData_aux(
 	 * Therefore the GPU cache doesn't need coherency and write-combine will
 	 * suffice on the CPU side. (WC buffer will be flushed at the first TA-kick)
 	 */
-	eError = DevmemFwAllocate(	psDevInfo,
-								sizeof(RGXFWIF_HWRTDATA),
-								RGX_FWCOMCTX_ALLOCFLAGS,
-								"FwHwRTData",
-								&psHWRTDataFwMemDesc	);
+	eError = DevmemFwAllocate(psDevInfo,
+	                          sizeof(RGXFWIF_HWRTDATA),
+	                          RGX_FWCOMCTX_ALLOCFLAGS,
+	                          "FwHwRTData",
+	                          &psHWRTDataFwMemDesc);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,
@@ -1405,6 +1408,7 @@ static PVRSRV_ERROR RGXCreateHWRTData_aux(
 	DevmemPDumpLoadMem(psKMHWRTDataSet->psHWRTDataFwMemDesc, 0, sizeof(*psHWRTData), PDUMP_FLAGS_CONTINUOUS);
 #endif
 
+	RGXFwSharedMemCacheOpPtr(psHWRTData, FLUSH);
 	DevmemReleaseCpuVirtAddr(psKMHWRTDataSet->psHWRTDataFwMemDesc);
 	return PVRSRV_OK;
 
@@ -1573,6 +1577,7 @@ PVRSRV_ERROR RGXCreateHWRTDataSet(CONNECTION_DATA      *psConnection,
 	PDUMPCOMMENT(psDeviceNode, "Dump HWRTDataCommon");
 	DevmemPDumpLoadMem(psHWRTDataCommonFwMemDesc, 0, sizeof(*psHWRTDataCommon), PDUMP_FLAGS_CONTINUOUS);
 #endif
+	RGXFwSharedMemCacheOpPtr(psHWRTDataCommon, FLUSH);
 	DevmemReleaseCpuVirtAddr(psHWRTDataCommonFwMemDesc);
 
 	psHWRTDataCommonCookie->ui32RefCount = 0;
@@ -1793,6 +1798,7 @@ PVRSRV_ERROR RGXCreateFreeList(CONNECTION_DATA      *psConnection,
 	/* Initialise host data structures */
 	psFreeList->psDevInfo = psDevInfo;
 	psFreeList->psConnection = psConnection;
+
 	psFreeList->psFreeListPMR = psFreeListPMR;
 	psFreeList->uiFreeListPMROffset = uiFreeListPMROffset;
 	psFreeList->psFWFreelistMemDesc = psFWFreelistMemDesc;
@@ -1843,6 +1849,7 @@ PVRSRV_ERROR RGXCreateFreeList(CONNECTION_DATA      *psConnection,
 		psFWFreeList->ui32FreeListID = psFreeList->ui32FreelistID;
 		psFWFreeList->bGrowPending = IMG_FALSE;
 		psFWFreeList->ui32ReadyPages = ui32ReadyPages;
+		RGXFwSharedMemCacheOpPtr(psFWFreeList, FLUSH);
 
 #if defined(SUPPORT_SHADOW_FREELISTS)
 		/* Get the FW Memory Context address... */
@@ -1991,6 +1998,7 @@ PVRSRV_ERROR RGXDestroyFreeList(RGX_FREELIST *psFreeList)
 
 		/* Get the current stack pointer for this free list */
 		DevmemAcquireCpuVirtAddr(psFreeList->psFWFreelistMemDesc, (void **)&psFWFreeList);
+		RGXFwSharedMemCacheOpValue(psFWFreeList->ui32CurrentStackTop, INVALIDATE);
 		ui32CurrentStackTop = psFWFreeList->ui32CurrentStackTop;
 		DevmemReleaseCpuVirtAddr(psFreeList->psFWFreelistMemDesc);
 
@@ -2131,6 +2139,7 @@ PVRSRV_ERROR RGXCreateZSBufferKM(CONNECTION_DATA * psConnection,
 	PDUMPCOMMENT(psDeviceNode, "Dump firmware ZS-Buffer");
 	DevmemPDumpLoadMem(psFWZSBufferMemDesc, 0, sizeof(*psFWZSBuffer), PDUMP_FLAGS_CONTINUOUS);
 #endif
+	RGXFwSharedMemCacheOpPtr(psFWZSBuffer, FLUSH);
 
 	/* Release address acquired above. */
 	DevmemReleaseCpuVirtAddr(psFWZSBufferMemDesc);
@@ -2592,6 +2601,7 @@ PVRSRV_ERROR _CreateTAContext(CONNECTION_DATA *psConnection,
 		psContextState->asGeomCore[uiCoreIdx].uTAReg_VDM_CALL_STACK_POINTER_Init =
 			sVDMCallStackAddr.uiAddr + (uiCoreIdx * ui32CallStackDepth * sizeof(IMG_UINT64));
 	}
+	RGXFwSharedMemCacheOpPtr(psContextState->asGeomCore, FLUSH);
 
 	DevmemReleaseCpuVirtAddr(psTAData->psContextStateMemDesc);
 
@@ -2906,6 +2916,7 @@ PVRSRV_ERROR PVRSRVRGXCreateRenderContextKM(CONNECTION_DATA				*psConnection,
 	psFWRenderContext->eTRPGeomCoreAffinity = RGXFWIF_DM_MAX;
 #endif
 	DevmemPDumpLoadMem(psRenderContext->psFWRenderContextMemDesc, 0, sizeof(RGXFWIF_FWRENDERCONTEXT), PDUMP_FLAGS_CONTINUOUS);
+	RGXFwSharedMemCacheOpPtr(psFWRenderContext, FLUSH);
 	DevmemReleaseCpuVirtAddr(psRenderContext->psFWRenderContextMemDesc);
 
 #if defined(SUPPORT_BUFFER_SYNC)
@@ -3038,6 +3049,7 @@ PVRSRV_ERROR PVRSRVRGXDestroyRenderContextKM(RGX_SERVER_RENDER_CONTEXT *psRender
 					PVRSRVGetErrorString(eError)));
 			goto e0;
 		}
+		RGXFwSharedMemCacheOpValue(psFWRenderContext->ui32WorkEstCCBSubmitted, INVALIDATE);
 
 		ui32WorkEstCCBSubmitted = psFWRenderContext->ui32WorkEstCCBSubmitted;
 

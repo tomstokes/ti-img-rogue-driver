@@ -259,6 +259,8 @@ void RGXDumpFirmwareTrace(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 		PVR_DUMPDEBUG_LOG("Device ID: %u", psDevInfo->psDeviceNode->sDevId.ui32InternalID);
 
+		RGXFwSharedMemCacheOpValue(psRGXFWIfTraceBufCtl->ui32LogType, INVALIDATE);
+
 		/* Print the log type settings... */
 		if (psRGXFWIfTraceBufCtl->ui32LogType & RGXFWIF_LOG_TYPE_GROUP_MASK)
 		{
@@ -347,16 +349,24 @@ static void RGXDumpFirmwareTraceLines(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 				IMG_UINT32 ui32TID,
 				bool bPrintAllLines)
 {
-	volatile IMG_UINT32  *pui32FWWrapCount = &(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].ui32WrapCount);
-	volatile IMG_UINT32  *pui32FWTracePtr  = &(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].ui32TracePointer);
-	IMG_UINT32           *pui32TraceBuf    = psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].pui32TraceBuffer;
-	IMG_UINT32           ui32HostWrapCount = *pui32FWWrapCount;
-	IMG_UINT32           ui32HostTracePtr  = *pui32FWTracePtr;
-	IMG_UINT32           ui32Count         = 0;
-	IMG_UINT32           ui32LineCount     = 0;
-	IMG_UINT32           ui32LastLineIdx   = 0;
-	IMG_CHAR             *pszLineBuffer    = NULL;
+	IMG_UINT32           *pui32TraceBuf;
+	volatile IMG_UINT32  *pui32FWWrapCount;
+	volatile IMG_UINT32  *pui32FWTracePtr;
+	IMG_UINT32           ui32HostWrapCount;
+	IMG_UINT32           ui32HostTracePtr;
+	IMG_UINT32           ui32Count           = 0;
+	IMG_UINT32           ui32LineCount       = 0;
+	IMG_UINT32           ui32LastLineIdx     = 0;
+	IMG_CHAR             *pszLineBuffer      = NULL;
 	IMG_UINT32           ui32TraceBufSizeInDWords;
+
+	RGXFwSharedMemCacheOpValue(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID], INVALIDATE);
+
+	pui32FWWrapCount = &(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].ui32WrapCount);
+	pui32FWTracePtr  = &(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].ui32TracePointer);
+	pui32TraceBuf    = psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].pui32TraceBuffer;
+	ui32HostWrapCount = *pui32FWWrapCount;
+	ui32HostTracePtr  = *pui32FWTracePtr;
 
 	if (pui32TraceBuf == NULL)
 	{
@@ -531,12 +541,18 @@ void RGXDumpFirmwareTraceBinary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	IMG_BOOL	bPrevLineWasZero = IMG_FALSE;
 	IMG_BOOL	bLineIsAllZeros = IMG_FALSE;
 	IMG_UINT32	ui32CountLines = 0;
-	IMG_UINT32	*pui32TraceBuffer = psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].pui32TraceBuffer;
+	IMG_UINT32	*pui32TraceBuffer;
+	IMG_CHAR *pszLine;
+
+	RGXFwSharedMemCacheOpExec(&psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID],
+	                          psRGXFWIfTraceBufCtl->ui32TraceBufSizeInDWords * sizeof(IMG_UINT32),
+	                          PVRSRV_CACHE_OP_INVALIDATE);
+	pui32TraceBuffer = psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].pui32TraceBuffer;
 
 /* Max number of DWords to be printed per line, in debug dump binary output */
 #define PVR_DD_FW_TRACEBUF_LINESIZE 30U
 	/* each element in the line is 8 characters plus a space.  The '+ 1' is because of the final trailing '\0'. */
-	IMG_CHAR *pszLine = OSAllocMem(9 * PVR_DD_FW_TRACEBUF_LINESIZE + 1);
+	pszLine = OSAllocMem(9 * PVR_DD_FW_TRACEBUF_LINESIZE + 1);
 	if (pszLine == NULL)
 	{
 		PVR_DPF((PVR_DBG_ERROR,
@@ -869,6 +885,8 @@ PVRSRV_ERROR RGXValidateFWImage(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 			goto cleanup_initfw;
 		}
 
+		RGXFwSharedMemCacheOpExec(pui32CodeMemoryPointer, psDevInfo->ui32FWCodeSizeInBytes, PVRSRV_CACHE_OP_INVALIDATE);
+
 		if (OSMemCmp(pui32HostFWCode, pui32CodeMemoryPointer, psDevInfo->ui32FWCodeSizeInBytes) == 0)
 		{
 			PVR_DUMPDEBUG_LOG("Match between Host and MIPS views of the FW code" );
@@ -992,6 +1010,8 @@ PVRSRV_ERROR ValidateFWOnLoad(PVRSRV_RGXDEV_INFO *psDevInfo)
 	{
 		return eError;
 	}
+
+	RGXFwSharedMemCacheOpExec(pbCodeMemoryPointer, psDevInfo->ui32FWCodeSizeInBytes, PVRSRV_CACHE_OP_INVALIDATE);
 
 	if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
 	{
@@ -1775,7 +1795,9 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 			return;
 		}
 	}
-
+	/* This should satisfy all accesses below */
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfOsInit->sRGXCompChecks,
+	                           INVALIDATE);
 	ui8FwOsCount = psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.sInitOptions.ui8OsCountSupport;
 
 	eError = PVRSRVGetDevicePowerState(psDeviceNode, &ePowerState);
@@ -1848,6 +1870,7 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	/* Dump out the kernel CCB. */
 	{
 		const RGXFWIF_CCB_CTL *psKCCBCtl = psDevInfo->psKernelCCBCtl;
+		RGXFwSharedMemCacheOpPtr(psDevInfo->psKernelCCBCtl, INVALIDATE);
 
 		if (psKCCBCtl != NULL)
 		{
@@ -1860,6 +1883,7 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	/* Dump out the firmware CCB. */
 	{
 		const RGXFWIF_CCB_CTL *psFCCBCtl = psDevInfo->psFirmwareCCBCtl;
+		RGXFwSharedMemCacheOpPtr(psDevInfo->psFirmwareCCBCtl, INVALIDATE);
 
 		if (psFCCBCtl != NULL)
 		{
@@ -1877,12 +1901,16 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 		if (psWorkEstCCBCtl != NULL)
 		{
+			RGXFwSharedMemCacheOpPtr(psWorkEstCCBCtl, INVALIDATE);
 			PVR_DUMPDEBUG_LOG("RGX WorkEst CCB WO:0x%X RO:0x%X",
 							  psWorkEstCCBCtl->ui32WriteOffset,
 							  psWorkEstCCBCtl->ui32ReadOffset);
 		}
 	}
 #endif
+
+	RGXFwSharedMemCacheOpPtr(psFwOsData,
+	                         INVALIDATE);
 
 	if (psFwOsData != NULL)
 	{
@@ -1984,6 +2012,9 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 			goto Exit;
 		}
 
+		RGXFwSharedMemCacheOpValue(psFwSysData->ui32ConfigFlags,
+		                           INVALIDATE);
+
 		_GetFwSysFlagsDescription(sFwSysFlagsDescription, MAX_FW_DESCRIPTION_LENGTH, psFwSysData->ui32ConfigFlags);
 		PVR_DUMPDEBUG_LOG("FW System config flags = 0x%08X (%s)", psFwSysData->ui32ConfigFlags, sFwSysFlagsDescription);
 	}
@@ -2034,6 +2065,8 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 			}
 			else
 			{
+				RGXFwSharedMemCacheOpValue(psRGXFWIfTraceBufCtl->ui32LogType, INVALIDATE);
+
 				for (tid = 0; tid < RGXFW_THREAD_NUM; tid++)
 				{
 					IMG_UINT32 *pui32TraceBuffer;
@@ -2059,6 +2092,7 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 						continue;
 					}
 
+					RGXFwSharedMemCacheOpValue(psRGXFWIfTraceBufCtl->sTraceBuf[tid].ui32TracePointer, INVALIDATE);
 					PVR_DUMPDEBUG_LOG("------[ RGX FW thread %d trace START ]------", tid);
 					PVR_DUMPDEBUG_LOG("FWT[traceptr]: %X", psRGXFWIfTraceBufCtl->sTraceBuf[tid].ui32TracePointer);
 					PVR_DUMPDEBUG_LOG("FWT[tracebufsize]: %X", psRGXFWIfTraceBufCtl->ui32TraceBufSizeInDWords);

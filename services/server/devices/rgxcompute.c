@@ -261,6 +261,7 @@ PVRSRV_ERROR PVRSRVRGXCreateComputeContextKM(CONNECTION_DATA			*psConnection,
 
 	OSDeviceMemCopy(&psFWComputeContext->sStaticComputeContextState, pStaticComputeContextState, ui32StaticComputeContextStateSize);
 	DevmemPDumpLoadMem(psComputeContext->psFWComputeContextMemDesc, 0, sizeof(RGXFWIF_FWCOMPUTECONTEXT), PDUMP_FLAGS_CONTINUOUS);
+	RGXFwSharedMemCacheOpValue(psFWComputeContext->sStaticComputeContextState, FLUSH);
 	DevmemReleaseCpuVirtAddr(psComputeContext->psFWComputeContextMemDesc);
 
 #if defined(SUPPORT_BUFFER_SYNC)
@@ -363,7 +364,7 @@ PVRSRV_ERROR PVRSRVRGXDestroyComputeContextKM(RGX_SERVER_COMPUTE_CONTEXT *psComp
 					PVRSRVGetErrorString(eError)));
 			return eError;
 		}
-
+		RGXFwSharedMemCacheOpValue(psFWComputeContext->ui32WorkEstCCBSubmitted, INVALIDATE);
 		ui32WorkEstCCBSubmitted = psFWComputeContext->ui32WorkEstCCBSubmitted;
 
 		DevmemReleaseCpuVirtAddr(psComputeContext->psFWComputeContextMemDesc);
@@ -1180,14 +1181,17 @@ PVRSRV_ERROR PVRSRVRGXFlushComputeDataKM(RGX_SERVER_COMPUTE_CONTEXT *psComputeCo
 					 "%s: Compute flush aborted (%s)",
 					 __func__,
 					 PVRSRVGetErrorString(eError)));
+			goto error_exit;
 		}
-		else if (unlikely(psDevInfo->pui32KernelCCBRtnSlots[ui32kCCBCommandSlot] &
+
+		if (unlikely(psDevInfo->pui32KernelCCBRtnSlots[ui32kCCBCommandSlot] &
 		                  RGXFWIF_KCCB_RTN_SLOT_POLL_FAILURE))
 		{
 			PVR_DPF((PVR_DBG_WARNING, "%s: FW poll on a HW operation failed", __func__));
 		}
 	}
 
+error_exit:
 	OSLockRelease(psComputeContext->hLock);
 	return eError;
 }

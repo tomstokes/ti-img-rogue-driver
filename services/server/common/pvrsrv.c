@@ -776,6 +776,9 @@ static PVRSRV_ERROR HandleFwHostSideRecovery(PVRSRV_DEVICE_NODE *psDeviceNode)
 	/* Flag to be set to notify FW while recovering from crash */
 	psDevInfo->psRGXFWIfSysInit->bFwHostRecoveryMode = IMG_TRUE;
 
+	/* Flush here because we have setup a fw alloc addr in the structure earlier */
+	RGXFwSharedMemCacheOpPtr(psDevInfo->psRGXFWIfSysInit, FLUSH);
+
 	/* Power-on the device resetting GPU & FW */
 	OSLockAcquire(psDeviceNode->hPowerLock);
 	eError = PVRSRVSetDevicePowerStateKM(psDeviceNode,
@@ -2380,6 +2383,9 @@ static PVRSRV_ERROR _ReadStateFlag(const PVRSRV_DEVICE_NODE *psDevice,
 	                    PVRSRV_ERROR_INVALID_PARAMS);
 
 	psDevInfo = (PVRSRV_RGXDEV_INFO *)psDevice->pvDevice;
+
+	RGXFwSharedMemCacheOpValue(psDevInfo->psRGXFWIfFwSysData->ui32ConfigFlags,
+	                           INVALIDATE);
 	ui32State = psDevInfo->psRGXFWIfFwSysData->ui32ConfigFlags;
 
 	if (pbValue)
@@ -2584,7 +2590,8 @@ PVRSRV_ERROR PVRSRVCommonDeviceDestroy(PVRSRV_DEVICE_NODE *psDeviceNode)
 			                              psSync->pui32LinAddr,
 			                              psDeviceNode->ui32NextMMUInvalidateUpdate-1,
 			                              0xFFFFFFFF,
-			                              POLL_FLAG_LOG_ERROR);
+			                              POLL_FLAG_LOG_ERROR,
+			                              NULL);
 			PVR_LOG_RETURN_IF_ERROR(eError, "PVRSRVPollForValueKM");
 
 			/* Important to set the device node pointer to NULL
@@ -2887,12 +2894,13 @@ PVRSRV_ERROR PVRSRVDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode)
 	PollForValueKM
 */
 static
-PVRSRV_ERROR PollForValueKM (volatile IMG_UINT32 __iomem *	pui32LinMemAddr,
-										  IMG_UINT32			ui32Value,
-										  IMG_UINT32			ui32Mask,
-										  IMG_UINT32			ui32Timeoutus,
-										  IMG_UINT32			ui32PollPeriodus,
-										  POLL_FLAGS            ePollFlags)
+PVRSRV_ERROR PollForValueKM (volatile IMG_UINT32 __iomem           *pui32LinMemAddr,
+										  IMG_UINT32                ui32Value,
+										  IMG_UINT32                ui32Mask,
+										  IMG_UINT32                ui32Timeoutus,
+										  IMG_UINT32                ui32PollPeriodus,
+										  POLL_FLAGS                ePollFlags,
+										  PFN_INVALIDATE_CACHEFUNC  pfnFwInvalidate)
 {
 #if defined(NO_HARDWARE)
 	PVR_UNREFERENCED_PARAMETER(pui32LinMemAddr);
@@ -2907,6 +2915,13 @@ PVRSRV_ERROR PollForValueKM (volatile IMG_UINT32 __iomem *	pui32LinMemAddr,
 
 	LOOP_UNTIL_TIMEOUT(ui32Timeoutus)
 	{
+		if (pfnFwInvalidate)
+		{
+			pfnFwInvalidate((const volatile void __force *)pui32LinMemAddr,
+			                sizeof(*pui32LinMemAddr),
+			                PVRSRV_CACHE_OP_INVALIDATE);
+		}
+
 		ui32ActualValue = OSReadHWReg32((void __iomem *)pui32LinMemAddr, 0) & ui32Mask;
 
 		if (ui32ActualValue == ui32Value)
@@ -2938,17 +2953,19 @@ PVRSRV_ERROR PollForValueKM (volatile IMG_UINT32 __iomem *	pui32LinMemAddr,
 	PVRSRVPollForValueKM
 */
 PVRSRV_ERROR PVRSRVPollForValueKM (PVRSRV_DEVICE_NODE  *psDevNode,
-												volatile IMG_UINT32	__iomem *pui32LinMemAddr,
-												IMG_UINT32			ui32Value,
-												IMG_UINT32			ui32Mask,
-												POLL_FLAGS          ePollFlags)
+												volatile IMG_UINT32	__iomem   *pui32LinMemAddr,
+												IMG_UINT32                     ui32Value,
+												IMG_UINT32                     ui32Mask,
+												POLL_FLAGS                     ePollFlags,
+												PFN_INVALIDATE_CACHEFUNC       pfnFwInvalidate)
 {
 	PVRSRV_ERROR eError;
 
 	eError = PollForValueKM(pui32LinMemAddr, ui32Value, ui32Mask,
 						  MAX_HW_TIME_US,
 						  MAX_HW_TIME_US/WAIT_TRY_COUNT,
-						  ePollFlags);
+						  ePollFlags,
+						  pfnFwInvalidate);
 	if (eError != PVRSRV_OK && BITMASK_HAS(ePollFlags, POLL_FLAG_DEBUG_DUMP))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed! Error(%s) CPU linear address(%p) Expected value(%u)",
@@ -2961,9 +2978,10 @@ PVRSRV_ERROR PVRSRVPollForValueKM (PVRSRV_DEVICE_NODE  *psDevNode,
 }
 
 PVRSRV_ERROR
-PVRSRVWaitForValueKM(volatile IMG_UINT32 __iomem *pui32LinMemAddr,
-                     IMG_UINT32                  ui32Value,
-                     IMG_UINT32                  ui32Mask)
+PVRSRVWaitForValueKM(volatile IMG_UINT32 __iomem   *pui32LinMemAddr,
+                     IMG_UINT32                    ui32Value,
+                     IMG_UINT32                    ui32Mask,
+                     PFN_INVALIDATE_CACHEFUNC      pfnFwInvalidate)
 {
 #if defined(NO_HARDWARE)
 	PVR_UNREFERENCED_PARAMETER(pui32LinMemAddr);
@@ -2984,6 +3002,13 @@ PVRSRVWaitForValueKM(volatile IMG_UINT32 __iomem *pui32LinMemAddr,
 	eError = PVRSRV_ERROR_TIMEOUT; /* Initialiser for following loop */
 	LOOP_UNTIL_TIMEOUT(MAX_HW_TIME_US)
 	{
+		if (pfnFwInvalidate)
+		{
+			pfnFwInvalidate((const volatile void __force *)pui32LinMemAddr,
+			                sizeof(*pui32LinMemAddr),
+			                PVRSRV_CACHE_OP_INVALIDATE);
+		}
+
 		ui32ActualValue = (OSReadDeviceMem32(pui32LinMemAddr) & ui32Mask);
 
 		if (ui32ActualValue == ui32Value)
