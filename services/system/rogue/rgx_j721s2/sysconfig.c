@@ -264,6 +264,9 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	gsDevice.pfnPrePowerState = SysDevPrePowerState;
 	gsDevice.pfnPostPowerState = SysDevPostPowerState;
 
+	/* cache coherency */
+	gsDevice.eCacheSnoopingMode = PVRSRV_DEVICE_SNOOP_CPU_ONLY;
+
 	*ppsDevConfig = &gsDevice;
 
 	SysDevPowerDomainsInit(&psDev->dev);
