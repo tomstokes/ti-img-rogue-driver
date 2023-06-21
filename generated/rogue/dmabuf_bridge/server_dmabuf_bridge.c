@@ -51,14 +51,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_dmabuf_bridge.h"
 
 #include "allocmem.h"
+#include "pvr_debug.h"
 #include "connection_server.h"
 #include "pvr_bridge.h"
-#include "pvr_debug.h"
 #if defined(SUPPORT_RGX)
 #include "rgx_bridge.h"
 #endif
-#include "handle.h"
 #include "srvcore.h"
+#include "handle.h"
 
 #include <linux/slab.h>
 
@@ -119,8 +119,7 @@ PVRSRVBridgePhysmemImportDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
 	ui32BufferSize = (IMG_UINT32)ui64BufferSize;
 
 	if (ui32BufferSize != 0) {
-		/* Try to use remainder of input buffer for copies if possible, word-aligned
-     * for safety. */
+		/* Try to use remainder of input buffer for copies if possible, word-aligned for safety. */
 		IMG_UINT32 ui32InBufferOffset =
 			PVR_ALIGN(sizeof(*psPhysmemImportDmaBufIN),
 				  sizeof(unsigned long));
@@ -185,9 +184,10 @@ PVRSRVBridgePhysmemImportDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psPhysmemImportDmaBufOUT->eError = PVRSRVAllocHandleUnlocked(
-		psConnection->psHandleBase, &psPhysmemImportDmaBufOUT->hPMRPtr,
-		(void *)psPMRPtrInt, PVRSRV_HANDLE_TYPE_PHYSMEM_PMR,
-		PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
+		psConnection->psHandleBase,
+
+		&psPhysmemImportDmaBufOUT->hPMRPtr, (void *)psPMRPtrInt,
+		PVRSRV_HANDLE_TYPE_PHYSMEM_PMR, PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 		(PFN_HANDLE_RELEASE)&_PhysmemImportDmaBufpsPMRPtrIntRelease);
 	if (unlikely(psPhysmemImportDmaBufOUT->eError != PVRSRV_OK)) {
 		UnlockHandle(psConnection->psHandleBase);
@@ -274,8 +274,7 @@ static IMG_INT PVRSRVBridgePhysmemImportDmaBufLocked(
 	ui32BufferSize = (IMG_UINT32)ui64BufferSize;
 
 	if (ui32BufferSize != 0) {
-		/* Try to use remainder of input buffer for copies if possible, word-aligned
-     * for safety. */
+		/* Try to use remainder of input buffer for copies if possible, word-aligned for safety. */
 		IMG_UINT32 ui32InBufferOffset =
 			PVR_ALIGN(sizeof(*psPhysmemImportDmaBufLockedIN),
 				  sizeof(unsigned long));
@@ -345,6 +344,7 @@ static IMG_INT PVRSRVBridgePhysmemImportDmaBufLocked(
 
 	psPhysmemImportDmaBufLockedOUT->eError = PVRSRVAllocHandleUnlocked(
 		psConnection->psHandleBase,
+
 		&psPhysmemImportDmaBufLockedOUT->hPMRPtr, (void *)psPMRPtrInt,
 		PVRSRV_HANDLE_TYPE_PHYSMEM_PMR, PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 		(PFN_HANDLE_RELEASE)&_PhysmemImportDmaBufLockedpsPMRPtrIntRelease);
@@ -428,6 +428,56 @@ PhysmemExportDmaBuf_exit:
 	return 0;
 }
 
+static IMG_INT
+PVRSRVBridgePhysmemExportGemHandle(IMG_UINT32 ui32DispatchTableEntry,
+				   IMG_UINT8 *psPhysmemExportGemHandleIN_UI8,
+				   IMG_UINT8 *psPhysmemExportGemHandleOUT_UI8,
+				   CONNECTION_DATA *psConnection)
+{
+	PVRSRV_BRIDGE_IN_PHYSMEMEXPORTGEMHANDLE *psPhysmemExportGemHandleIN =
+		(PVRSRV_BRIDGE_IN_PHYSMEMEXPORTGEMHANDLE *)IMG_OFFSET_ADDR(
+			psPhysmemExportGemHandleIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PHYSMEMEXPORTGEMHANDLE *psPhysmemExportGemHandleOUT =
+		(PVRSRV_BRIDGE_OUT_PHYSMEMEXPORTGEMHANDLE *)IMG_OFFSET_ADDR(
+			psPhysmemExportGemHandleOUT_UI8, 0);
+
+	IMG_HANDLE hPMR = psPhysmemExportGemHandleIN->hPMR;
+	PMR *psPMRInt = NULL;
+
+	/* Lock over handle lookup. */
+	LockHandle(psConnection->psHandleBase);
+
+	/* Look up the address from the handle */
+	psPhysmemExportGemHandleOUT->eError = PVRSRVLookupHandleUnlocked(
+		psConnection->psHandleBase, (void **)&psPMRInt, hPMR,
+		PVRSRV_HANDLE_TYPE_PHYSMEM_PMR, IMG_TRUE);
+	if (unlikely(psPhysmemExportGemHandleOUT->eError != PVRSRV_OK)) {
+		UnlockHandle(psConnection->psHandleBase);
+		goto PhysmemExportGemHandle_exit;
+	}
+	/* Release now we have looked up handles. */
+	UnlockHandle(psConnection->psHandleBase);
+
+	psPhysmemExportGemHandleOUT->eError = PhysmemExportGemHandle(
+		psConnection, OSGetDevNode(psConnection), psPMRInt,
+		&psPhysmemExportGemHandleOUT->ui32Handle);
+
+PhysmemExportGemHandle_exit:
+
+	/* Lock over handle lookup cleanup. */
+	LockHandle(psConnection->psHandleBase);
+
+	/* Unreference the previously looked up handle */
+	if (psPMRInt) {
+		PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase, hPMR,
+					    PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
+	}
+	/* Release now we have cleaned up look up handles. */
+	UnlockHandle(psConnection->psHandleBase);
+
+	return 0;
+}
+
 static PVRSRV_ERROR _PhysmemImportSparseDmaBufpsPMRPtrIntRelease(void *pvData)
 {
 	PVRSRV_ERROR eError;
@@ -496,8 +546,7 @@ static IMG_INT PVRSRVBridgePhysmemImportSparseDmaBuf(
 	ui32BufferSize = (IMG_UINT32)ui64BufferSize;
 
 	if (ui32BufferSize != 0) {
-		/* Try to use remainder of input buffer for copies if possible, word-aligned
-     * for safety. */
+		/* Try to use remainder of input buffer for copies if possible, word-aligned for safety. */
 		IMG_UINT32 ui32InBufferOffset =
 			PVR_ALIGN(sizeof(*psPhysmemImportSparseDmaBufIN),
 				  sizeof(unsigned long));
@@ -595,6 +644,7 @@ static IMG_INT PVRSRVBridgePhysmemImportSparseDmaBuf(
 
 	psPhysmemImportSparseDmaBufOUT->eError = PVRSRVAllocHandleUnlocked(
 		psConnection->psHandleBase,
+
 		&psPhysmemImportSparseDmaBufOUT->hPMRPtr, (void *)psPMRPtrInt,
 		PVRSRV_HANDLE_TYPE_PHYSMEM_PMR, PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 		(PFN_HANDLE_RELEASE)&_PhysmemImportSparseDmaBufpsPMRPtrIntRelease);
@@ -653,6 +703,10 @@ PVRSRV_ERROR InitDMABUFBridge(void)
 			      PVRSRVBridgePhysmemExportDmaBuf, NULL);
 
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DMABUF,
+			      PVRSRV_BRIDGE_DMABUF_PHYSMEMEXPORTGEMHANDLE,
+			      PVRSRVBridgePhysmemExportGemHandle, NULL);
+
+	SetDispatchTableEntry(PVRSRV_BRIDGE_DMABUF,
 			      PVRSRV_BRIDGE_DMABUF_PHYSMEMIMPORTSPARSEDMABUF,
 			      PVRSRVBridgePhysmemImportSparseDmaBuf, NULL);
 
@@ -672,6 +726,9 @@ void DeinitDMABUFBridge(void)
 
 	UnsetDispatchTableEntry(PVRSRV_BRIDGE_DMABUF,
 				PVRSRV_BRIDGE_DMABUF_PHYSMEMEXPORTDMABUF);
+
+	UnsetDispatchTableEntry(PVRSRV_BRIDGE_DMABUF,
+				PVRSRV_BRIDGE_DMABUF_PHYSMEMEXPORTGEMHANDLE);
 
 	UnsetDispatchTableEntry(PVRSRV_BRIDGE_DMABUF,
 				PVRSRV_BRIDGE_DMABUF_PHYSMEMIMPORTSPARSEDMABUF);
