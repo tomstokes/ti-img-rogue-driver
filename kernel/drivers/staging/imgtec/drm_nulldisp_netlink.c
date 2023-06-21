@@ -89,8 +89,8 @@ struct nlpvrdpy {
 	((unsigned int)((nlpvrdpy)->dev->primary->index))
 
 /* Command internal flags */
-#define	NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED	0x00000001
-#define	NLPVRDPY_CIF_NLPVRDPY			0x00000002
+#define NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED 0x00000001
+#define NLPVRDPY_CIF_NLPVRDPY 0x00000002
 
 static LIST_HEAD(nlpvrdpy_list);
 static DEFINE_MUTEX(nlpvrdpy_list_mutex);
@@ -105,13 +105,11 @@ static inline void nlpvrdpy_unlock(struct nlpvrdpy *nlpvrdpy)
 	mutex_unlock(&nlpvrdpy->mutex);
 }
 
-struct nlpvrdpy *nlpvrdpy_create(struct drm_device *dev,
-					nlpvrdpy_disconnect_cb disconnect_cb,
-					void *disconnect_cb_data,
-					nlpvrdpy_flipped_cb flipped_cb,
-					void *flipped_cb_data,
-					nlpvrdpy_copied_cb copied_cb,
-					void *copied_cb_data)
+struct nlpvrdpy *
+nlpvrdpy_create(struct drm_device *dev, nlpvrdpy_disconnect_cb disconnect_cb,
+		void *disconnect_cb_data, nlpvrdpy_flipped_cb flipped_cb,
+		void *flipped_cb_data, nlpvrdpy_copied_cb copied_cb,
+		void *copied_cb_data)
 {
 	struct nlpvrdpy *nlpvrdpy = kzalloc(sizeof(*nlpvrdpy), GFP_KERNEL);
 
@@ -172,9 +170,8 @@ static struct nlpvrdpy *nlpvrdpy_lookup(u32 minor)
 	return nlpvrdpy;
 }
 
-static int nlpvrdpy_pre_cmd(const struct genl_ops *ops,
-				struct sk_buff *skb,
-				struct genl_info *info)
+static int nlpvrdpy_pre_cmd(const struct genl_ops *ops, struct sk_buff *skb,
+			    struct genl_info *info)
 {
 	struct nlattr **attrs = info->attrs;
 	struct nlpvrdpy *nlpvrdpy = NULL;
@@ -185,8 +182,8 @@ static int nlpvrdpy_pre_cmd(const struct genl_ops *ops,
 			return -EINVAL;
 	}
 
-	if (ops->internal_flags & (NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED |
-					NLPVRDPY_CIF_NLPVRDPY)) {
+	if (ops->internal_flags &
+	    (NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED | NLPVRDPY_CIF_NLPVRDPY)) {
 		u32 minor;
 
 		if (!attrs[NLPVRDPY_ATTR_MINOR])
@@ -204,7 +201,7 @@ static int nlpvrdpy_pre_cmd(const struct genl_ops *ops,
 				goto err_unlock;
 			}
 			if ((nlpvrdpy->net != genl_info_net(info)) ||
-				(nlpvrdpy->dst_portid != info->snd_portid)) {
+			    (nlpvrdpy->dst_portid != info->snd_portid)) {
 				ret = -EPROTO;
 				goto err_unlock;
 			}
@@ -220,26 +217,23 @@ err_unlock:
 	return ret;
 }
 
-static void nlpvrdpy_post_cmd(const struct genl_ops *ops,
-				struct sk_buff *skb,
-				struct genl_info *info)
+static void nlpvrdpy_post_cmd(const struct genl_ops *ops, struct sk_buff *skb,
+			      struct genl_info *info)
 {
 }
 
-static struct genl_family nlpvrdpy_family = {
-	.name = "nlpvrdpy",
-	.version = 1,
-	.maxattr = NLPVRDPY_ATTR_MAX,
+static struct genl_family nlpvrdpy_family = { .name = "nlpvrdpy",
+					      .version = 1,
+					      .maxattr = NLPVRDPY_ATTR_MAX,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
-	.policy = nlpvrdpy_policy,
+					      .policy = nlpvrdpy_policy,
 #endif
-	.pre_doit = &nlpvrdpy_pre_cmd,
-	.post_doit = &nlpvrdpy_post_cmd
-};
+					      .pre_doit = &nlpvrdpy_pre_cmd,
+					      .post_doit = &nlpvrdpy_post_cmd };
 
 /* Must be called with the struct nlpvrdpy mutex held */
 static int nlpvrdpy_send_msg_locked(struct nlpvrdpy *nlpvrdpy,
-					struct sk_buff *msg)
+				    struct sk_buff *msg)
 {
 	int err;
 
@@ -279,8 +273,8 @@ void nlpvrdpy_send_disconnect(struct nlpvrdpy *nlpvrdpy)
 	if (!msg)
 		return;
 
-	hdr = genlmsg_put(msg, nlpvrdpy->dst_portid, 0,
-				&nlpvrdpy_family, 0, NLPVRDPY_CMD_DISCONNECT);
+	hdr = genlmsg_put(msg, nlpvrdpy->dst_portid, 0, &nlpvrdpy_family, 0,
+			  NLPVRDPY_CMD_DISCONNECT);
 	if (!hdr)
 		goto err_msg_free;
 
@@ -292,7 +286,7 @@ void nlpvrdpy_send_disconnect(struct nlpvrdpy *nlpvrdpy)
 
 	nlpvrdpy_lock(nlpvrdpy);
 
-	(void) nlpvrdpy_send_msg_locked(nlpvrdpy, msg);
+	(void)nlpvrdpy_send_msg_locked(nlpvrdpy, msg);
 
 	atomic_set(&nlpvrdpy->connected, 0);
 	nlpvrdpy->net = NULL;
@@ -319,8 +313,8 @@ static int nlpvrdpy_get_offsets_and_sizes(struct drm_framebuffer *fb,
 		err = drm_gem_create_mmap_offset(obj);
 		if (err) {
 			DRM_ERROR(
-			    "Failed to get mmap offset for buffer[%d] = %p\n",
-			    i, obj);
+				"Failed to get mmap offset for buffer[%d] = %p\n",
+				i, obj);
 			return err;
 		}
 
@@ -339,9 +333,10 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 	int i, err;
 	const int num_planes = nulldisp_drm_fb_num_planes(fb);
 	u64 plane_addr[NLPVRDPY_MAX_NUM_PLANES],
-	    plane_size[NLPVRDPY_MAX_NUM_PLANES];
+		plane_size[NLPVRDPY_MAX_NUM_PLANES];
 
-	err = nlpvrdpy_get_offsets_and_sizes(fb, objs, &plane_addr[0], &plane_size[0]);
+	err = nlpvrdpy_get_offsets_and_sizes(fb, objs, &plane_addr[0],
+					     &plane_size[0]);
 	if (err) {
 		pr_err("%s: nlpvrdpy_get_offsets_and_sizes failed", __func__);
 		return err;
@@ -355,7 +350,8 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 
 	err = nla_put_u8(msg, NLPVRDPY_ATTR_NUM_PLANES, num_planes);
 	if (err) {
-		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_NUM_PLANES failed", __func__);
+		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_NUM_PLANES failed",
+		       __func__);
 		return err;
 	}
 
@@ -371,32 +367,36 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 		return err;
 	}
 
-	err = nla_put_u32(msg, NLPVRDPY_ATTR_PIXFMT, nulldisp_drm_fb_format(fb));
+	err = nla_put_u32(msg, NLPVRDPY_ATTR_PIXFMT,
+			  nulldisp_drm_fb_format(fb));
 	if (err) {
-		pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_PIXFMT failed",
-		       __func__);
+		pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_PIXFMT failed", __func__);
 		return err;
 	}
 
 	err = nla_put_u64_64bit(msg, NLPVRDPY_ATTR_FB_MODIFIER,
-				nulldisp_drm_fb_modifier(fb), NLPVRDPY_ATTR_PAD);
+				nulldisp_drm_fb_modifier(fb),
+				NLPVRDPY_ATTR_PAD);
 	if (err) {
 		pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_FB_MODIFIER "
-		       "NLPVRDPY_ATTR_PAD failed", __func__);
+		       "NLPVRDPY_ATTR_PAD failed",
+		       __func__);
 		return err;
 	}
 
 	/* IMG_COLORSPACE_BT601_CONFORMANT_RANGE */
 	err = nla_put_u8(msg, NLPVRDPY_ATTR_YUV_CSC, 1);
 	if (err) {
-		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_YUV_CSC 1 failed", __func__);
+		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_YUV_CSC 1 failed",
+		       __func__);
 		return err;
 	}
 
 	/* 8-bit per sample */
 	err = nla_put_u8(msg, NLPVRDPY_ATTR_YUV_BPP, 8);
 	if (err) {
-		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_YUV_BPP 8 failed", __func__);
+		pr_err("%s: nla_put_u8 NLPVRDPY_ATTR_YUV_BPP 8 failed",
+		       __func__);
 		return err;
 	}
 
@@ -405,7 +405,8 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 					plane_addr[i], NLPVRDPY_ATTR_PAD);
 		if (err) {
 			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, ADDR)"
-			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			       " NLPVRDPY_ATTR_PAD failed",
+			       __func__, i);
 			return err;
 		}
 
@@ -413,7 +414,8 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 					plane_size[i], NLPVRDPY_ATTR_PAD);
 		if (err) {
 			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, SIZE)"
-			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			       " NLPVRDPY_ATTR_PAD failed",
+			       __func__, i);
 			return err;
 		}
 
@@ -421,7 +423,8 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 					fb->offsets[i], NLPVRDPY_ATTR_PAD);
 		if (err) {
 			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, OFFSET)"
-			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			       " NLPVRDPY_ATTR_PAD failed",
+			       __func__, i);
 			return err;
 		}
 
@@ -429,14 +432,17 @@ static int nlpvrdpy_put_fb_attributes(struct sk_buff *msg,
 					fb->pitches[i], NLPVRDPY_ATTR_PAD);
 		if (err) {
 			pr_err("%s: nla_put_u64_64bit NLPVRDPY_ATTR_PLANE(%d, PITCH)"
-			       " NLPVRDPY_ATTR_PAD failed", __func__, i);
+			       " NLPVRDPY_ATTR_PAD failed",
+			       __func__, i);
 			return err;
 		}
 
-		err = nla_put_u32(msg, NLPVRDPY_ATTR_PLANE(i, GEM_OBJ_NAME), (u32)objs[0]->name);
+		err = nla_put_u32(msg, NLPVRDPY_ATTR_PLANE(i, GEM_OBJ_NAME),
+				  (u32)objs[0]->name);
 		if (err) {
 			pr_err("%s: nla_put_u32 NLPVRDPY_ATTR_PLANE(%d, GEM_OBJ_NAME)"
-			       " failed", __func__, i);
+			       " failed",
+			       __func__, i);
 			return err;
 		}
 	}
@@ -485,8 +491,7 @@ static int nlpvrdpy_name_gem_objs(struct drm_framebuffer *fb,
 	return 0;
 }
 
-int nlpvrdpy_send_flip(struct nlpvrdpy *nlpvrdpy,
-		       struct drm_framebuffer *fb,
+int nlpvrdpy_send_flip(struct nlpvrdpy *nlpvrdpy, struct drm_framebuffer *fb,
 		       struct drm_gem_object **objs)
 {
 	struct sk_buff *msg;
@@ -506,8 +511,8 @@ int nlpvrdpy_send_flip(struct nlpvrdpy *nlpvrdpy,
 	if (!msg)
 		return -ENOMEM;
 
-	hdr = genlmsg_put(msg, nlpvrdpy->dst_portid, 0,
-				&nlpvrdpy_family, 0, NLPVRDPY_CMD_FLIP);
+	hdr = genlmsg_put(msg, nlpvrdpy->dst_portid, 0, &nlpvrdpy_family, 0,
+			  NLPVRDPY_CMD_FLIP);
 	if (!hdr) {
 		err = -ENOMEM;
 		goto err_msg_free;
@@ -526,8 +531,7 @@ err_msg_free:
 	return err;
 }
 
-int nlpvrdpy_send_copy(struct nlpvrdpy *nlpvrdpy,
-		       struct drm_framebuffer *fb,
+int nlpvrdpy_send_copy(struct nlpvrdpy *nlpvrdpy, struct drm_framebuffer *fb,
 		       struct drm_gem_object **objs)
 {
 	struct sk_buff *msg;
@@ -547,8 +551,8 @@ int nlpvrdpy_send_copy(struct nlpvrdpy *nlpvrdpy,
 	if (!msg)
 		return -ENOMEM;
 
-	hdr = genlmsg_put(msg, nlpvrdpy->dst_portid, 0,
-				&nlpvrdpy_family, 0, NLPVRDPY_CMD_COPY);
+	hdr = genlmsg_put(msg, nlpvrdpy->dst_portid, 0, &nlpvrdpy_family, 0,
+			  NLPVRDPY_CMD_COPY);
 	if (!hdr) {
 		err = -ENOMEM;
 		goto err_msg_free;
@@ -581,15 +585,15 @@ static int nlpvrdpy_cmd_connect(struct sk_buff *skb, struct genl_info *info)
 	if (!msg)
 		return -ENOMEM;
 
-	hdr = genlmsg_put_reply(msg, info, &nlpvrdpy_family,
-						0, NLPVRDPY_CMD_CONNECTED);
+	hdr = genlmsg_put_reply(msg, info, &nlpvrdpy_family, 0,
+				NLPVRDPY_CMD_CONNECTED);
 	if (!hdr) {
 		err = -ENOMEM;
 		goto err_msg_free;
 	}
 
 	err = nla_put_string(msg, NLPVRDPY_ATTR_NAME,
-				nlpvrdpy->dev->driver->name);
+			     nlpvrdpy->dev->driver->name);
 	if (err)
 		goto err_msg_free;
 
@@ -631,8 +635,8 @@ static int nlpvrdpy_cmd_flipped(struct sk_buff *skb, struct genl_info *info)
 	struct nlpvrdpy *nlpvrdpy = info->user_ptr[0];
 
 	return (nlpvrdpy->flipped_cb) ?
-			nlpvrdpy->flipped_cb(nlpvrdpy->flipped_cb_data) :
-			0;
+		       nlpvrdpy->flipped_cb(nlpvrdpy->flipped_cb_data) :
+		       0;
 }
 
 static int nlpvrdpy_cmd_copied(struct sk_buff *skb, struct genl_info *info)
@@ -640,47 +644,39 @@ static int nlpvrdpy_cmd_copied(struct sk_buff *skb, struct genl_info *info)
 	struct nlpvrdpy *nlpvrdpy = info->user_ptr[0];
 
 	return (nlpvrdpy->copied_cb) ?
-			nlpvrdpy->copied_cb(nlpvrdpy->copied_cb_data) :
-			0;
+		       nlpvrdpy->copied_cb(nlpvrdpy->copied_cb_data) :
+		       0;
 }
 
 static struct genl_ops nlpvrdpy_ops[] = {
-	{
-		.cmd = NLPVRDPY_CMD_CONNECT,
+	{ .cmd = NLPVRDPY_CMD_CONNECT,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
-		.policy = nlpvrdpy_policy,
+	  .policy = nlpvrdpy_policy,
 #endif
-		.doit = nlpvrdpy_cmd_connect,
-		.flags = GENL_ADMIN_PERM,
-		.internal_flags = NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED
-	},
-	{
-		.cmd = NLPVRDPY_CMD_DISCONNECT,
+	  .doit = nlpvrdpy_cmd_connect,
+	  .flags = GENL_ADMIN_PERM,
+	  .internal_flags = NLPVRDPY_CIF_NLPVRDPY_NOT_CONNECTED },
+	{ .cmd = NLPVRDPY_CMD_DISCONNECT,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
-		.policy = nlpvrdpy_policy,
+	  .policy = nlpvrdpy_policy,
 #endif
-		.doit = nlpvrdpy_cmd_disconnect,
-		.flags = 0,
-		.internal_flags = NLPVRDPY_CIF_NLPVRDPY
-	},
-	{
-		.cmd = NLPVRDPY_CMD_FLIPPED,
+	  .doit = nlpvrdpy_cmd_disconnect,
+	  .flags = 0,
+	  .internal_flags = NLPVRDPY_CIF_NLPVRDPY },
+	{ .cmd = NLPVRDPY_CMD_FLIPPED,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
-		.policy = nlpvrdpy_policy,
+	  .policy = nlpvrdpy_policy,
 #endif
-		.doit = nlpvrdpy_cmd_flipped,
-		.flags = 0,
-		.internal_flags = NLPVRDPY_CIF_NLPVRDPY
-	},
-	{
-		.cmd = NLPVRDPY_CMD_COPIED,
+	  .doit = nlpvrdpy_cmd_flipped,
+	  .flags = 0,
+	  .internal_flags = NLPVRDPY_CIF_NLPVRDPY },
+	{ .cmd = NLPVRDPY_CMD_COPIED,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
-		.policy = nlpvrdpy_policy,
+	  .policy = nlpvrdpy_policy,
 #endif
-		.doit = nlpvrdpy_cmd_copied,
-		.flags = 0,
-		.internal_flags = NLPVRDPY_CIF_NLPVRDPY
-	}
+	  .doit = nlpvrdpy_cmd_copied,
+	  .flags = 0,
+	  .internal_flags = NLPVRDPY_CIF_NLPVRDPY }
 };
 
 int nlpvrdpy_register(void)

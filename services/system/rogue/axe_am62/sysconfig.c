@@ -70,26 +70,23 @@ static RGX_DATA gsRGXData = {
 	.psRGXTimingInfo = &gsRGXTimingInfo,
 };
 
-static PVRSRV_DEVICE_CONFIG	gsDevice;
+static PVRSRV_DEVICE_CONFIG gsDevice;
 
 /*
 	CPU to Device physical address translation
 */
-static
-void UMAPhysHeapCpuPAddrToDevPAddr(IMG_HANDLE hPrivData,
-								   IMG_UINT32 ui32NumOfAddr,
-								   IMG_DEV_PHYADDR *psDevPAddr,
-								   IMG_CPU_PHYADDR *psCpuPAddr)
+static void UMAPhysHeapCpuPAddrToDevPAddr(IMG_HANDLE hPrivData,
+					  IMG_UINT32 ui32NumOfAddr,
+					  IMG_DEV_PHYADDR *psDevPAddr,
+					  IMG_CPU_PHYADDR *psCpuPAddr)
 {
 	PVR_UNREFERENCED_PARAMETER(hPrivData);
 
 	/* Optimise common case */
 	psDevPAddr[0].uiAddr = psCpuPAddr[0].uiAddr;
-	if (ui32NumOfAddr > 1)
-	{
+	if (ui32NumOfAddr > 1) {
 		IMG_UINT32 ui32Idx;
-		for (ui32Idx = 1; ui32Idx < ui32NumOfAddr; ++ui32Idx)
-		{
+		for (ui32Idx = 1; ui32Idx < ui32NumOfAddr; ++ui32Idx) {
 			psDevPAddr[ui32Idx].uiAddr = psCpuPAddr[ui32Idx].uiAddr;
 		}
 	}
@@ -98,21 +95,18 @@ void UMAPhysHeapCpuPAddrToDevPAddr(IMG_HANDLE hPrivData,
 /*
 	Device to CPU physical address translation
 */
-static
-void UMAPhysHeapDevPAddrToCpuPAddr(IMG_HANDLE hPrivData,
-								   IMG_UINT32 ui32NumOfAddr,
-								   IMG_CPU_PHYADDR *psCpuPAddr,
-								   IMG_DEV_PHYADDR *psDevPAddr)
+static void UMAPhysHeapDevPAddrToCpuPAddr(IMG_HANDLE hPrivData,
+					  IMG_UINT32 ui32NumOfAddr,
+					  IMG_CPU_PHYADDR *psCpuPAddr,
+					  IMG_DEV_PHYADDR *psDevPAddr)
 {
 	PVR_UNREFERENCED_PARAMETER(hPrivData);
 
 	/* Optimise common case */
 	psCpuPAddr[0].uiAddr = psDevPAddr[0].uiAddr;
-	if (ui32NumOfAddr > 1)
-	{
+	if (ui32NumOfAddr > 1) {
 		IMG_UINT32 ui32Idx;
-		for (ui32Idx = 1; ui32Idx < ui32NumOfAddr; ++ui32Idx)
-		{
+		for (ui32Idx = 1; ui32Idx < ui32NumOfAddr; ++ui32Idx) {
 			psCpuPAddr[ui32Idx].uiAddr = psDevPAddr[ui32Idx].uiAddr;
 		}
 	}
@@ -142,8 +136,7 @@ static int SysDevPowerDomainsInit(struct device *dev)
 	int err = 0;
 
 	err = dev_pm_domain_attach(dev, false);
-	if (err)
-	{
+	if (err) {
 		err = PTR_ERR(dev);
 		dev_err(dev, "failed to get pm-domain: %d\n", err);
 	}
@@ -152,11 +145,10 @@ static int SysDevPowerDomainsInit(struct device *dev)
 	return err;
 }
 
-static PVRSRV_ERROR SysDevPrePowerState(
-		IMG_HANDLE hSysData,
-		PVRSRV_SYS_POWER_STATE eNewPowerState,
-		PVRSRV_SYS_POWER_STATE eCurrentPowerState,
-		PVRSRV_POWER_FLAGS ePwrFlags)
+static PVRSRV_ERROR
+SysDevPrePowerState(IMG_HANDLE hSysData, PVRSRV_SYS_POWER_STATE eNewPowerState,
+		    PVRSRV_SYS_POWER_STATE eCurrentPowerState,
+		    PVRSRV_POWER_FLAGS ePwrFlags)
 {
 	struct platform_device *psDev = hSysData;
 
@@ -171,11 +163,10 @@ static PVRSRV_ERROR SysDevPrePowerState(
 	return PVRSRV_OK;
 }
 
-static PVRSRV_ERROR SysDevPostPowerState(
-		IMG_HANDLE hSysData,
-		PVRSRV_SYS_POWER_STATE eNewPowerState,
-		PVRSRV_SYS_POWER_STATE eCurrentPowerState,
-		PVRSRV_POWER_FLAGS ePwrFlags)
+static PVRSRV_ERROR
+SysDevPostPowerState(IMG_HANDLE hSysData, PVRSRV_SYS_POWER_STATE eNewPowerState,
+		     PVRSRV_SYS_POWER_STATE eCurrentPowerState,
+		     PVRSRV_POWER_FLAGS ePwrFlags)
 {
 	PVRSRV_ERROR ret;
 	struct platform_device *psDev = hSysData;
@@ -210,16 +201,16 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	dma_set_mask(pvOSDevice, DMA_BIT_MASK(40));
 
 	dev_irq = platform_get_irq(psDev, 0);
-	if (dev_irq < 0)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: platform_get_irq failed (%d)", __func__, -dev_irq));
+	if (dev_irq < 0) {
+		PVR_DPF((PVR_DBG_ERROR, "%s: platform_get_irq failed (%d)",
+			 __func__, -dev_irq));
 		return PVRSRV_ERROR_INVALID_DEVICE;
 	}
 
 	dev_res = platform_get_resource(psDev, IORESOURCE_MEM, 0);
-	if (dev_res == NULL)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: platform_get_resource failed", __func__));
+	if (dev_res == NULL) {
+		PVR_DPF((PVR_DBG_ERROR, "%s: platform_get_resource failed",
+			 __func__));
 		return PVRSRV_ERROR_INVALID_DEVICE;
 	}
 
@@ -227,19 +218,19 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	memset(&gsDevice, 0, sizeof(gsDevice));
 
 	/* Setup the device config */
-	gsDevice.pvOSDevice                         = pvOSDevice;
-	gsDevice.pszName                            = SYS_RGX_DEV_NAME;
-	gsDevice.pszVersion                         = NULL;
+	gsDevice.pvOSDevice = pvOSDevice;
+	gsDevice.pszName = SYS_RGX_DEV_NAME;
+	gsDevice.pszVersion = NULL;
 
 	/* Device setup information */
-	gsDevice.sRegsCpuPBase.uiAddr    = dev_res->start;
-	gsDevice.ui32RegsSize            = (unsigned int)(dev_res->end - dev_res->start);
-	gsDevice.ui32IRQ                 = dev_irq;
+	gsDevice.sRegsCpuPBase.uiAddr = dev_res->start;
+	gsDevice.ui32RegsSize = (unsigned int)(dev_res->end - dev_res->start);
+	gsDevice.ui32IRQ = dev_irq;
 
 	/* Device's physical heaps */
-	gsDevice.pasPhysHeaps      = &gsPhysHeapConfig;
+	gsDevice.pasPhysHeaps = &gsPhysHeapConfig;
 	gsDevice.ui32PhysHeapCount = 1;
-	gsDevice.eDefaultHeap      = PVRSRV_PHYS_HEAP_GPU_LOCAL;
+	gsDevice.eDefaultHeap = PVRSRV_PHYS_HEAP_GPU_LOCAL;
 
 	/* Setup RGX specific timing data */
 	gsDevice.hDevData = &gsRGXData;
@@ -248,7 +239,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	gsDevice.hSysData = to_platform_device((struct device *)pvOSDevice);
 
 	/* clock frequency */
-	gsDevice.pfnClockFreqGet        = NULL;
+	gsDevice.pfnClockFreqGet = NULL;
 
 	/* Set gsDevice.pfnSysDevErrorNotify callback */
 	gsDevice.pfnSysDevErrorNotify = SysRGXErrorNotify;
@@ -272,16 +263,13 @@ void SysDevDeInit(PVRSRV_DEVICE_CONFIG *psDevConfig)
 	psDevConfig->pvOSDevice = NULL;
 }
 
-PVRSRV_ERROR SysInstallDeviceLISR(IMG_HANDLE hSysData,
-								  IMG_UINT32 ui32IRQ,
-								  const IMG_CHAR *pszName,
-								  PFN_LISR pfnLISR,
-								  void *pvData,
-								  IMG_HANDLE *phLISRData)
+PVRSRV_ERROR SysInstallDeviceLISR(IMG_HANDLE hSysData, IMG_UINT32 ui32IRQ,
+				  const IMG_CHAR *pszName, PFN_LISR pfnLISR,
+				  void *pvData, IMG_HANDLE *phLISRData)
 {
 	PVR_UNREFERENCED_PARAMETER(hSysData);
-	return OSInstallSystemLISR(phLISRData, ui32IRQ, pszName, pfnLISR, pvData,
-			SYS_IRQ_FLAG_TRIGGER_DEFAULT);
+	return OSInstallSystemLISR(phLISRData, ui32IRQ, pszName, pfnLISR,
+				   pvData, SYS_IRQ_FLAG_TRIGGER_DEFAULT);
 }
 
 PVRSRV_ERROR SysUninstallDeviceLISR(IMG_HANDLE hLISRData)
@@ -290,8 +278,8 @@ PVRSRV_ERROR SysUninstallDeviceLISR(IMG_HANDLE hLISRData)
 }
 
 PVRSRV_ERROR SysDebugInfo(PVRSRV_DEVICE_CONFIG *psDevConfig,
-				DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
-				void *pvDumpDebugFile)
+			  DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
+			  void *pvDumpDebugFile)
 {
 	PVR_UNREFERENCED_PARAMETER(psDevConfig);
 	PVR_UNREFERENCED_PARAMETER(pfnDumpDebugPrintf);

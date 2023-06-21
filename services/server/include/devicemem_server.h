@@ -69,8 +69,7 @@ typedef struct _DEVMEMINT_PF_NOTIFY_ DEVMEMINT_PF_NOTIFY;
  *
  */
 PVRSRV_ERROR
-DevmemServerGetImportHandle(DEVMEM_MEMDESC *psMemDesc,
-                            IMG_HANDLE *phImport);
+DevmemServerGetImportHandle(DEVMEM_MEMDESC *psMemDesc, IMG_HANDLE *phImport);
 
 /*
  * DevmemServerGetHeapHandle()
@@ -80,7 +79,7 @@ DevmemServerGetImportHandle(DEVMEM_MEMDESC *psMemDesc,
  */
 PVRSRV_ERROR
 DevmemServerGetHeapHandle(DEVMEMINT_RESERVATION *psReservation,
-                          IMG_HANDLE *phHeap);
+			  IMG_HANDLE *phHeap);
 
 /*
  * DevmemServerGetContext()
@@ -90,7 +89,7 @@ DevmemServerGetHeapHandle(DEVMEMINT_RESERVATION *psReservation,
  */
 PVRSRV_ERROR
 DevmemServerGetContext(DEVMEMINT_HEAP *psDevmemHeap,
-                       DEVMEMINT_CTX **ppsDevmemCtxPtr);
+		       DEVMEMINT_CTX **ppsDevmemCtxPtr);
 
 /*
  * DevmemServerGetPrivData()
@@ -99,8 +98,7 @@ DevmemServerGetContext(DEVMEMINT_HEAP *psDevmemHeap,
  *
  */
 PVRSRV_ERROR
-DevmemServerGetPrivData(DEVMEMINT_CTX *psDevmemCtx,
-                        IMG_HANDLE *phPrivData);
+DevmemServerGetPrivData(DEVMEMINT_CTX *psDevmemCtx, IMG_HANDLE *phPrivData);
 
 /*
  * DevmemIntCtxCreate()
@@ -127,12 +125,10 @@ DevmemServerGetPrivData(DEVMEMINT_CTX *psDevmemCtx,
  */
 PVRSRV_ERROR
 DevmemIntCtxCreate(CONNECTION_DATA *psConnection,
-                   PVRSRV_DEVICE_NODE *psDeviceNode,
-                   /* devnode / perproc etc */
-                   IMG_BOOL bKernelMemoryCtx,
-                   DEVMEMINT_CTX **ppsDevmemCtxPtr,
-                   IMG_HANDLE *hPrivData,
-                   IMG_UINT32 *pui32CPUCacheLineSize);
+		   PVRSRV_DEVICE_NODE *psDeviceNode,
+		   /* devnode / perproc etc */
+		   IMG_BOOL bKernelMemoryCtx, DEVMEMINT_CTX **ppsDevmemCtxPtr,
+		   IMG_HANDLE *hPrivData, IMG_UINT32 *pui32CPUCacheLineSize);
 /*
  * DevmemIntCtxDestroy()
  *
@@ -164,12 +160,10 @@ DevmemIntCtxDestroy(DEVMEMINT_CTX *psDevmemCtx);
  * be created by this call.
  */
 PVRSRV_ERROR
-DevmemIntHeapCreate(DEVMEMINT_CTX *psDevmemCtx,
-                    IMG_UINT32 uiHeapConfigIndex,
-                    IMG_UINT32 uiHeapIndex,
-                    IMG_DEV_VIRTADDR sHeapBaseAddr,
-                    IMG_UINT32 uiLog2DataPageSize,
-                    DEVMEMINT_HEAP **ppsDevmemHeapPtr);
+DevmemIntHeapCreate(DEVMEMINT_CTX *psDevmemCtx, IMG_UINT32 uiHeapConfigIndex,
+		    IMG_UINT32 uiHeapIndex, IMG_DEV_VIRTADDR sHeapBaseAddr,
+		    IMG_UINT32 uiLog2DataPageSize,
+		    DEVMEMINT_HEAP **ppsDevmemHeapPtr);
 /*
  * DevmemIntHeapDestroy()
  *
@@ -212,10 +206,9 @@ DevmemIntHeapGetBaseAddr(DEVMEMINT_HEAP *psDevmemHeap);
  */
 PVRSRV_ERROR
 DevmemIntMapPMR(DEVMEMINT_HEAP *psDevmemHeap,
-                DEVMEMINT_RESERVATION *psReservation,
-                PMR *psPMR,
-                PVRSRV_MEMALLOCFLAGS_T uiMapFlags,
-                DEVMEMINT_MAPPING **ppsMappingPtr);
+		DEVMEMINT_RESERVATION *psReservation, PMR *psPMR,
+		PVRSRV_MEMALLOCFLAGS_T uiMapFlags,
+		DEVMEMINT_MAPPING **ppsMappingPtr);
 /*
  * DevmemIntUnmapPMR()
  *
@@ -224,19 +217,16 @@ DevmemIntMapPMR(DEVMEMINT_HEAP *psDevmemHeap,
 PVRSRV_ERROR
 DevmemIntUnmapPMR(DEVMEMINT_MAPPING *psMapping);
 
-
-
 /*
  * DevmemIntReserveRangeAndMapPMR()
  * Bundled call to reserve range and map.
  */
 PVRSRV_ERROR
 DevmemIntReserveRangeAndMapPMR(DEVMEMINT_HEAP *psDevmemHeap,
-							   IMG_DEV_VIRTADDR sAllocationDevVAddr,
-							   IMG_DEVMEM_SIZE_T uiAllocationSize,
-							   PMR *psPMR,
-							   PVRSRV_MEMALLOCFLAGS_T uiMapFlags,
-							   DEVMEMINT_MAPPING **ppsMappingPtr);
+			       IMG_DEV_VIRTADDR sAllocationDevVAddr,
+			       IMG_DEVMEM_SIZE_T uiAllocationSize, PMR *psPMR,
+			       PVRSRV_MEMALLOCFLAGS_T uiMapFlags,
+			       DEVMEMINT_MAPPING **ppsMappingPtr);
 
 PVRSRV_ERROR
 DevmemIntUnreserveRangeAndUnmapPMR(DEVMEMINT_MAPPING *psMappingPtr);
@@ -253,9 +243,9 @@ DevmemIntUnreserveRangeAndUnmapPMR(DEVMEMINT_MAPPING *psMappingPtr);
  */
 PVRSRV_ERROR
 DevmemIntReserveRange(DEVMEMINT_HEAP *psDevmemHeap,
-                      IMG_DEV_VIRTADDR sAllocationDevVAddr,
-                      IMG_DEVMEM_SIZE_T uiAllocationSize,
-                      DEVMEMINT_RESERVATION **ppsReservationPtr);
+		      IMG_DEV_VIRTADDR sAllocationDevVAddr,
+		      IMG_DEVMEM_SIZE_T uiAllocationSize,
+		      DEVMEMINT_RESERVATION **ppsReservationPtr);
 /*
  * DevmemIntUnreserveRange()
  *
@@ -286,9 +276,9 @@ DevmemIntUnreserveRange(DEVMEMINT_RESERVATION *psDevmemReservation);
 */ /**************************************************************************/
 PVRSRV_ERROR
 DevmemXIntReserveRange(DEVMEMINT_HEAP *psDevmemHeap,
-                       IMG_DEV_VIRTADDR sAllocationDevVAddr,
-                       IMG_DEVMEM_SIZE_T uiAllocationSize,
-                       DEVMEMXINT_RESERVATION **ppsRsrv);
+		       IMG_DEV_VIRTADDR sAllocationDevVAddr,
+		       IMG_DEVMEM_SIZE_T uiAllocationSize,
+		       DEVMEMXINT_RESERVATION **ppsRsrv);
 
 /*************************************************************************/ /*!
  * @Function    DevmemXIntUnreserveRange()
@@ -318,12 +308,9 @@ DevmemXIntUnreserveRange(DEVMEMXINT_RESERVATION *psRsrv);
  * @Return      PVRSRV_ERROR
 */ /**************************************************************************/
 PVRSRV_ERROR
-DevmemXIntMapPages(DEVMEMXINT_RESERVATION *psRsrv,
-                   PMR *psPMR,
-                   IMG_UINT32 uiPageCount,
-                   IMG_UINT32 uiPhysPageOffset,
-                   PVRSRV_MEMALLOCFLAGS_T uiFlags,
-                   IMG_UINT32 uiVirtPageOffset);
+DevmemXIntMapPages(DEVMEMXINT_RESERVATION *psRsrv, PMR *psPMR,
+		   IMG_UINT32 uiPageCount, IMG_UINT32 uiPhysPageOffset,
+		   PVRSRV_MEMALLOCFLAGS_T uiFlags, IMG_UINT32 uiVirtPageOffset);
 
 /*************************************************************************/ /*!
  * @Function    DevmemXIntUnmapPages()
@@ -340,8 +327,7 @@ DevmemXIntMapPages(DEVMEMXINT_RESERVATION *psRsrv,
 */ /**************************************************************************/
 PVRSRV_ERROR
 DevmemXIntUnmapPages(DEVMEMXINT_RESERVATION *psRsrv,
-                     IMG_UINT32 uiVirtPageOffset,
-                     IMG_UINT32 uiPageCount);
+		     IMG_UINT32 uiVirtPageOffset, IMG_UINT32 uiPageCount);
 
 /*************************************************************************/ /*!
 @Function       DevmemIntChangeSparse
@@ -367,16 +353,14 @@ DevmemXIntUnmapPages(DEVMEMXINT_RESERVATION *psRsrv,
 @Return         PVRSRV_ERROR failure code
 */ /**************************************************************************/
 PVRSRV_ERROR
-DevmemIntChangeSparse(DEVMEMINT_HEAP *psDevmemHeap,
-                      PMR *psPMR,
-                      IMG_UINT32 ui32AllocPageCount,
-                      IMG_UINT32 *pai32AllocIndices,
-                      IMG_UINT32 ui32FreePageCount,
-                      IMG_UINT32 *pai32FreeIndices,
-                      SPARSE_MEM_RESIZE_FLAGS uiSparseFlags,
-                      PVRSRV_MEMALLOCFLAGS_T uiFlags,
-                      IMG_DEV_VIRTADDR sDevVAddrBase,
-                      IMG_UINT64 sCpuVAddrBase);
+DevmemIntChangeSparse(DEVMEMINT_HEAP *psDevmemHeap, PMR *psPMR,
+		      IMG_UINT32 ui32AllocPageCount,
+		      IMG_UINT32 *pai32AllocIndices,
+		      IMG_UINT32 ui32FreePageCount,
+		      IMG_UINT32 *pai32FreeIndices,
+		      SPARSE_MEM_RESIZE_FLAGS uiSparseFlags,
+		      PVRSRV_MEMALLOCFLAGS_T uiFlags,
+		      IMG_DEV_VIRTADDR sDevVAddrBase, IMG_UINT64 sCpuVAddrBase);
 
 /*
  * DevmemIntRGXInvalidateFBSCTable()
@@ -386,19 +370,19 @@ DevmemIntChangeSparse(DEVMEMINT_HEAP *psDevmemHeap,
  */
 PVRSRV_ERROR
 DevmemIntInvalidateFBSCTable(DEVMEMINT_CTX *psDevmemCtx,
-                             IMG_UINT64 ui64FBSCEntryMask);
+			     IMG_UINT64 ui64FBSCEntryMask);
 
 PVRSRV_ERROR
-DevmemIntIsVDevAddrValid(CONNECTION_DATA * psConnection,
-                         PVRSRV_DEVICE_NODE *psDevNode,
-                         DEVMEMINT_CTX *psDevMemContext,
-                         IMG_DEV_VIRTADDR sDevAddr);
+DevmemIntIsVDevAddrValid(CONNECTION_DATA *psConnection,
+			 PVRSRV_DEVICE_NODE *psDevNode,
+			 DEVMEMINT_CTX *psDevMemContext,
+			 IMG_DEV_VIRTADDR sDevAddr);
 
 PVRSRV_ERROR
-DevmemIntGetFaultAddress(CONNECTION_DATA * psConnection,
-                         PVRSRV_DEVICE_NODE *psDevNode,
-                         DEVMEMINT_CTX *psDevMemContext,
-                         IMG_DEV_VIRTADDR *psFaultAddress);
+DevmemIntGetFaultAddress(CONNECTION_DATA *psConnection,
+			 PVRSRV_DEVICE_NODE *psDevNode,
+			 DEVMEMINT_CTX *psDevMemContext,
+			 IMG_DEV_VIRTADDR *psFaultAddress);
 
 /*************************************************************************/ /*!
 @Function       DevmemIntRegisterPFNotifyKM
@@ -409,8 +393,7 @@ DevmemIntGetFaultAddress(CONNECTION_DATA * psConnection,
 @Return         PVRSRV_ERROR
 */ /**************************************************************************/
 PVRSRV_ERROR
-DevmemIntRegisterPFNotifyKM(DEVMEMINT_CTX *psDevmemCtx,
-                            IMG_BOOL      bRegister);
+DevmemIntRegisterPFNotifyKM(DEVMEMINT_CTX *psDevmemCtx, IMG_BOOL bRegister);
 
 /*************************************************************************/ /*!
 @Function       DevmemIntPFNotify
@@ -423,8 +406,8 @@ DevmemIntRegisterPFNotifyKM(DEVMEMINT_CTX *psDevmemCtx,
 @Return         PVRSRV_ERROR
 */ /**************************************************************************/
 PVRSRV_ERROR DevmemIntPFNotify(PVRSRV_DEVICE_NODE *psDevNode,
-                               IMG_UINT64         ui64FaultedPCAddress,
-                               IMG_DEV_VIRTADDR   sFaultAddress);
+			       IMG_UINT64 ui64FaultedPCAddress,
+			       IMG_DEV_VIRTADDR sFaultAddress);
 
 #if defined(PDUMP)
 /*
@@ -434,67 +417,50 @@ PVRSRV_ERROR DevmemIntPFNotify(PVRSRV_DEVICE_NODE *psDevNode,
  * the given virtual address.
  */
 PVRSRV_ERROR
-DevmemIntPDumpSaveToFileVirtual(CONNECTION_DATA * psConnection,
-								PVRSRV_DEVICE_NODE *psDeviceNode,
-								DEVMEMINT_CTX *psDevmemCtx,
-                                IMG_DEV_VIRTADDR sDevAddrStart,
-                                IMG_DEVMEM_SIZE_T uiSize,
-                                IMG_UINT32 uiArraySize,
-                                const IMG_CHAR *pszFilename,
-                                IMG_UINT32 ui32FileOffset,
-                                IMG_UINT32 ui32PDumpFlags);
+DevmemIntPDumpSaveToFileVirtual(
+	CONNECTION_DATA *psConnection, PVRSRV_DEVICE_NODE *psDeviceNode,
+	DEVMEMINT_CTX *psDevmemCtx, IMG_DEV_VIRTADDR sDevAddrStart,
+	IMG_DEVMEM_SIZE_T uiSize, IMG_UINT32 uiArraySize,
+	const IMG_CHAR *pszFilename, IMG_UINT32 ui32FileOffset,
+	IMG_UINT32 ui32PDumpFlags);
 
 IMG_UINT32
 DevmemIntMMUContextID(DEVMEMINT_CTX *psDevMemContext);
 
 PVRSRV_ERROR
-DevmemIntPDumpImageDescriptor(CONNECTION_DATA * psConnection,
-                              PVRSRV_DEVICE_NODE *psDeviceNode,
-                              DEVMEMINT_CTX *psDevMemContext,
-                              IMG_UINT32 ui32Size,
-                              const IMG_CHAR *pszFileName,
-                              IMG_DEV_VIRTADDR sData,
-                              IMG_UINT32 ui32DataSize,
-                              IMG_UINT32 ui32LogicalWidth,
-                              IMG_UINT32 ui32LogicalHeight,
-                              IMG_UINT32 ui32PhysicalWidth,
-                              IMG_UINT32 ui32PhysicalHeight,
-                              PDUMP_PIXEL_FORMAT ePixFmt,
-                              IMG_MEMLAYOUT eMemLayout,
-                              IMG_FB_COMPRESSION eFBCompression,
-                              const IMG_UINT32 *paui32FBCClearColour,
-                              PDUMP_FBC_SWIZZLE eFBCSwizzle,
-                              IMG_DEV_VIRTADDR sHeader,
-                              IMG_UINT32 ui32HeaderSize,
-                              IMG_UINT32 ui32PDumpFlags);
+DevmemIntPDumpImageDescriptor(
+	CONNECTION_DATA *psConnection, PVRSRV_DEVICE_NODE *psDeviceNode,
+	DEVMEMINT_CTX *psDevMemContext, IMG_UINT32 ui32Size,
+	const IMG_CHAR *pszFileName, IMG_DEV_VIRTADDR sData,
+	IMG_UINT32 ui32DataSize, IMG_UINT32 ui32LogicalWidth,
+	IMG_UINT32 ui32LogicalHeight, IMG_UINT32 ui32PhysicalWidth,
+	IMG_UINT32 ui32PhysicalHeight, PDUMP_PIXEL_FORMAT ePixFmt,
+	IMG_MEMLAYOUT eMemLayout, IMG_FB_COMPRESSION eFBCompression,
+	const IMG_UINT32 *paui32FBCClearColour, PDUMP_FBC_SWIZZLE eFBCSwizzle,
+	IMG_DEV_VIRTADDR sHeader, IMG_UINT32 ui32HeaderSize,
+	IMG_UINT32 ui32PDumpFlags);
 
 PVRSRV_ERROR
-DevmemIntPDumpDataDescriptor(CONNECTION_DATA * psConnection,
-                             PVRSRV_DEVICE_NODE *psDeviceNode,
-                             DEVMEMINT_CTX *psDevMemContext,
-                             IMG_UINT32 ui32Size,
-                             const IMG_CHAR *pszFileName,
-                             IMG_DEV_VIRTADDR sData,
-                             IMG_UINT32 ui32DataSize,
-                             IMG_UINT32 ui32HeaderType,
-                             IMG_UINT32 ui32ElementType,
-                             IMG_UINT32 ui32ElementCount,
-                             IMG_UINT32 ui32PDumpFlags);
+DevmemIntPDumpDataDescriptor(CONNECTION_DATA *psConnection,
+			     PVRSRV_DEVICE_NODE *psDeviceNode,
+			     DEVMEMINT_CTX *psDevMemContext,
+			     IMG_UINT32 ui32Size, const IMG_CHAR *pszFileName,
+			     IMG_DEV_VIRTADDR sData, IMG_UINT32 ui32DataSize,
+			     IMG_UINT32 ui32HeaderType,
+			     IMG_UINT32 ui32ElementType,
+			     IMG_UINT32 ui32ElementCount,
+			     IMG_UINT32 ui32PDumpFlags);
 #else /* PDUMP */
 
 #ifdef INLINE_IS_PRAGMA
 #pragma inline(DevmemIntPDumpSaveToFileVirtual)
 #endif
-static INLINE PVRSRV_ERROR
-DevmemIntPDumpSaveToFileVirtual(CONNECTION_DATA * psConnection,
-								PVRSRV_DEVICE_NODE *psDeviceNode,
-								DEVMEMINT_CTX *psDevmemCtx,
-                                IMG_DEV_VIRTADDR sDevAddrStart,
-                                IMG_DEVMEM_SIZE_T uiSize,
-                                IMG_UINT32 uiArraySize,
-                                const IMG_CHAR *pszFilename,
-                                IMG_UINT32 ui32FileOffset,
-                                IMG_UINT32 ui32PDumpFlags)
+static INLINE PVRSRV_ERROR DevmemIntPDumpSaveToFileVirtual(
+	CONNECTION_DATA *psConnection, PVRSRV_DEVICE_NODE *psDeviceNode,
+	DEVMEMINT_CTX *psDevmemCtx, IMG_DEV_VIRTADDR sDevAddrStart,
+	IMG_DEVMEM_SIZE_T uiSize, IMG_UINT32 uiArraySize,
+	const IMG_CHAR *pszFilename, IMG_UINT32 ui32FileOffset,
+	IMG_UINT32 ui32PDumpFlags)
 {
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	PVR_UNREFERENCED_PARAMETER(psDeviceNode);
@@ -511,26 +477,17 @@ DevmemIntPDumpSaveToFileVirtual(CONNECTION_DATA * psConnection,
 #ifdef INLINE_IS_PRAGMA
 #pragma inline(DevmemIntPDumpImageDescriptor)
 #endif
-static INLINE PVRSRV_ERROR
-DevmemIntPDumpImageDescriptor(CONNECTION_DATA * psConnection,
-                              PVRSRV_DEVICE_NODE *psDeviceNode,
-                              DEVMEMINT_CTX *psDevMemContext,
-                              IMG_UINT32 ui32Size,
-                              const IMG_CHAR *pszFileName,
-                              IMG_DEV_VIRTADDR sData,
-                              IMG_UINT32 ui32DataSize,
-                              IMG_UINT32 ui32LogicalWidth,
-                              IMG_UINT32 ui32LogicalHeight,
-                              IMG_UINT32 ui32PhysicalWidth,
-                              IMG_UINT32 ui32PhysicalHeight,
-                              PDUMP_PIXEL_FORMAT ePixFmt,
-                              IMG_MEMLAYOUT eMemLayout,
-                              IMG_FB_COMPRESSION eFBCompression,
-                              const IMG_UINT32 *paui32FBCClearColour,
-                              PDUMP_FBC_SWIZZLE eFBCSwizzle,
-                              IMG_DEV_VIRTADDR sHeader,
-                              IMG_UINT32 ui32HeaderSize,
-                              IMG_UINT32 ui32PDumpFlags)
+static INLINE PVRSRV_ERROR DevmemIntPDumpImageDescriptor(
+	CONNECTION_DATA *psConnection, PVRSRV_DEVICE_NODE *psDeviceNode,
+	DEVMEMINT_CTX *psDevMemContext, IMG_UINT32 ui32Size,
+	const IMG_CHAR *pszFileName, IMG_DEV_VIRTADDR sData,
+	IMG_UINT32 ui32DataSize, IMG_UINT32 ui32LogicalWidth,
+	IMG_UINT32 ui32LogicalHeight, IMG_UINT32 ui32PhysicalWidth,
+	IMG_UINT32 ui32PhysicalHeight, PDUMP_PIXEL_FORMAT ePixFmt,
+	IMG_MEMLAYOUT eMemLayout, IMG_FB_COMPRESSION eFBCompression,
+	const IMG_UINT32 *paui32FBCClearColour, PDUMP_FBC_SWIZZLE eFBCSwizzle,
+	IMG_DEV_VIRTADDR sHeader, IMG_UINT32 ui32HeaderSize,
+	IMG_UINT32 ui32PDumpFlags)
 {
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	PVR_UNREFERENCED_PARAMETER(psDeviceNode);
@@ -557,17 +514,12 @@ DevmemIntPDumpImageDescriptor(CONNECTION_DATA * psConnection,
 #ifdef INLINE_IS_PRAGMA
 #pragma inline(DevmemIntPDumpDataDescriptor)
 #endif
-static INLINE PVRSRV_ERROR
-DevmemIntPDumpDataDescriptor(CONNECTION_DATA * psConnection,
-                              PVRSRV_DEVICE_NODE *psDeviceNode,
-                              DEVMEMINT_CTX *psDevMemContext,
-                              IMG_UINT32 ui32Size,
-                              const IMG_CHAR *pszFileName,
-                              IMG_DEV_VIRTADDR sData,
-                              IMG_UINT32 ui32DataSize,
-                              IMG_UINT32 ui32ElementType,
-                              IMG_UINT32 ui32ElementCount,
-                              IMG_UINT32 ui32PDumpFlags)
+static INLINE PVRSRV_ERROR DevmemIntPDumpDataDescriptor(
+	CONNECTION_DATA *psConnection, PVRSRV_DEVICE_NODE *psDeviceNode,
+	DEVMEMINT_CTX *psDevMemContext, IMG_UINT32 ui32Size,
+	const IMG_CHAR *pszFileName, IMG_DEV_VIRTADDR sData,
+	IMG_UINT32 ui32DataSize, IMG_UINT32 ui32ElementType,
+	IMG_UINT32 ui32ElementCount, IMG_UINT32 ui32PDumpFlags)
 {
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	PVR_UNREFERENCED_PARAMETER(psDeviceNode);
@@ -591,16 +543,14 @@ PVRSRV_ERROR
 DevmemIntDeInit(void);
 
 PVRSRV_ERROR
-DevmemIntExportCtx(DEVMEMINT_CTX *psContext,
-                   PMR *psPMR,
-                   DEVMEMINT_CTX_EXPORT **ppsContextExport);
+DevmemIntExportCtx(DEVMEMINT_CTX *psContext, PMR *psPMR,
+		   DEVMEMINT_CTX_EXPORT **ppsContextExport);
 
 PVRSRV_ERROR
 DevmemIntUnexportCtx(DEVMEMINT_CTX_EXPORT *psContextExport);
 
 PVRSRV_ERROR
-DevmemIntAcquireRemoteCtx(PMR *psPMR,
-                          DEVMEMINT_CTX **ppsContext,
-                          IMG_HANDLE *phPrivData);
+DevmemIntAcquireRemoteCtx(PMR *psPMR, DEVMEMINT_CTX **ppsContext,
+			  IMG_HANDLE *phPrivData);
 
 #endif /* DEVICEMEM_SERVER_H */

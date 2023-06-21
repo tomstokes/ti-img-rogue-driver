@@ -59,7 +59,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C" {
 #endif
 
-
 #include "img_defs.h"
 #include "img_types.h"
 #include "img_elf.h"
@@ -78,7 +77,6 @@ extern "C" {
  * RGX_BNC_CONFIG_KM_HEADER (rgxconfig_km_B.V.N.C.h)
  */
 
-
 /*!
 *******************************************************************************
 
@@ -94,10 +92,7 @@ extern "C" {
  @Return         void
 
 ******************************************************************************/
-void RGXMemCopy(const void *hPrivate,
-                void *pvDst,
-                void *pvSrc,
-                size_t uiSize);
+void RGXMemCopy(const void *hPrivate, void *pvDst, void *pvSrc, size_t uiSize);
 
 /*!
 *******************************************************************************
@@ -114,10 +109,8 @@ void RGXMemCopy(const void *hPrivate,
  @Return         void
 
 ******************************************************************************/
-void RGXMemSet(const void *hPrivate,
-               void *pvDst,
-               IMG_UINT8 ui8Value,
-               size_t uiSize);
+void RGXMemSet(const void *hPrivate, void *pvDst, IMG_UINT8 ui8Value,
+	       size_t uiSize);
 
 /*!
 *******************************************************************************
@@ -133,10 +126,8 @@ void RGXMemSet(const void *hPrivate,
  @Return         void
 
 ******************************************************************************/
-__printf(2, 3)
-void RGXCommentLog(const void *hPrivate,
-                   const IMG_CHAR *pszString,
-                   ...);
+__printf(2, 3) void RGXCommentLog(const void *hPrivate,
+				  const IMG_CHAR *pszString, ...);
 
 /*!
 *******************************************************************************
@@ -152,38 +143,36 @@ void RGXCommentLog(const void *hPrivate,
  @Return         void
 
 ******************************************************************************/
-__printf(2, 3)
-void RGXErrorLog(const void *hPrivate,
-                 const IMG_CHAR *pszString,
-                 ...);
+__printf(2, 3) void RGXErrorLog(const void *hPrivate, const IMG_CHAR *pszString,
+				...);
 
 /* This is used to check if a specific feature is enabled.
  * Should be used instead of calling RGXDeviceHasFeature.  */
 #define RGX_DEVICE_HAS_FEATURE(hPrivate, Feature) \
-			RGXDeviceHasFeature(hPrivate, RGX_FEATURE_##Feature##_BIT_MASK)
+	RGXDeviceHasFeature(hPrivate, RGX_FEATURE_##Feature##_BIT_MASK)
 
 /* This is used to check if a specific feature with value is enabled.
  * Should be used instead of calling RGXDeviceGetFeatureValue.  */
 #define RGX_DEVICE_HAS_FEATURE_VALUE(hPrivate, Feature) \
-			(RGXDeviceGetFeatureValue(hPrivate, RGX_FEATURE_##Feature##_IDX) >= 0)
+	(RGXDeviceGetFeatureValue(hPrivate, RGX_FEATURE_##Feature##_IDX) >= 0)
 
 /* This is used to get the value of a specific feature from hPrivate.
  * Should be used instead of calling RGXDeviceGetFeatureValue.  */
 #define RGX_DEVICE_GET_FEATURE_VALUE(hPrivate, Feature) \
-			RGXDeviceGetFeatureValue(hPrivate, RGX_FEATURE_##Feature##_IDX)
+	RGXDeviceGetFeatureValue(hPrivate, RGX_FEATURE_##Feature##_IDX)
 
 /* This is used to get the value of a specific ERN from hPrivate.
  * Should be used instead of calling RGXDeviceHasErnBrn.  */
 #define RGX_DEVICE_HAS_ERN(hPrivate, FixNum) \
-			RGXDeviceHasErnBrn(hPrivate, HW_##FixNum##_BIT_MASK)
+	RGXDeviceHasErnBrn(hPrivate, HW_##FixNum##_BIT_MASK)
 
 /* This is used to get the value of a specific BRN from hPrivate.
  * Should be used instead of calling RGXDeviceHasErnBrn.  */
 #define RGX_DEVICE_HAS_BRN(hPrivate, FixNum) \
-			RGXDeviceHasErnBrn(hPrivate, FIX_HW_##FixNum##_BIT_MASK)
+	RGXDeviceHasErnBrn(hPrivate, FIX_HW_##FixNum##_BIT_MASK)
 
 #define CLK_CTRL_FORCE_ON(X, Module) \
-			X = (((X) & RGX_CR_##Module##_CLRMSK) | RGX_CR_##Module##_ON)
+	X = (((X)&RGX_CR_##Module##_CLRMSK) | RGX_CR_##Module##_ON)
 /*!
 *******************************************************************************
 
@@ -197,7 +186,8 @@ void RGXErrorLog(const void *hPrivate,
  @Return         Value >= 0 if the given feature is available, -1 otherwise
 
 ******************************************************************************/
-IMG_INT32 RGXDeviceGetFeatureValue(const void *hPrivate, IMG_UINT64 ui64Feature);
+IMG_INT32 RGXDeviceGetFeatureValue(const void *hPrivate,
+				   IMG_UINT64 ui64Feature);
 
 /*!
 *******************************************************************************
@@ -258,13 +248,11 @@ IMG_UINT32 RGXGetFWCorememSize(const void *hPrivate);
  @Return        void
 
 ******************************************************************************/
-void RGXWriteReg32(const void *hPrivate,
-                   IMG_UINT32 ui32RegAddr,
-                   IMG_UINT32 ui32RegValue);
+void RGXWriteReg32(const void *hPrivate, IMG_UINT32 ui32RegAddr,
+		   IMG_UINT32 ui32RegValue);
 
-void RGXWriteReg64(const void *hPrivate,
-                   IMG_UINT32 ui32RegAddr,
-                   IMG_UINT64 ui64RegValue);
+void RGXWriteReg64(const void *hPrivate, IMG_UINT32 ui32RegAddr,
+		   IMG_UINT64 ui64RegValue);
 
 /*!
 *******************************************************************************
@@ -279,11 +267,9 @@ void RGXWriteReg64(const void *hPrivate,
  @Return         Register value
 
 ******************************************************************************/
-IMG_UINT32 RGXReadReg32(const void *hPrivate,
-                        IMG_UINT32 ui32RegAddr);
+IMG_UINT32 RGXReadReg32(const void *hPrivate, IMG_UINT32 ui32RegAddr);
 
-IMG_UINT64 RGXReadReg64(const void *hPrivate,
-                        IMG_UINT32 ui32RegAddr);
+IMG_UINT64 RGXReadReg64(const void *hPrivate, IMG_UINT32 ui32RegAddr);
 
 /*!
 *******************************************************************************
@@ -300,10 +286,9 @@ IMG_UINT64 RGXReadReg64(const void *hPrivate,
  @Return         Always returns PVRSRV_OK
 
 ******************************************************************************/
-IMG_UINT32 RGXReadModifyWriteReg64(const void *hPrivate,
-                                   IMG_UINT32 ui32RegAddr,
-                                   IMG_UINT64 ui64RegValue,
-                                   IMG_UINT64 ui64RegKeepMask);
+IMG_UINT32 RGXReadModifyWriteReg64(const void *hPrivate, IMG_UINT32 ui32RegAddr,
+				   IMG_UINT64 ui64RegValue,
+				   IMG_UINT64 ui64RegKeepMask);
 
 /*!
 *******************************************************************************
@@ -322,15 +307,11 @@ IMG_UINT32 RGXReadModifyWriteReg64(const void *hPrivate,
                  PVRSRV_ERROR_TIMEOUT if the poll takes too long
 
 ******************************************************************************/
-PVRSRV_ERROR RGXPollReg32(const void *hPrivate,
-                          IMG_UINT32 ui32RegAddr,
-                          IMG_UINT32 ui32RegValue,
-                          IMG_UINT32 ui32RegMask);
+PVRSRV_ERROR RGXPollReg32(const void *hPrivate, IMG_UINT32 ui32RegAddr,
+			  IMG_UINT32 ui32RegValue, IMG_UINT32 ui32RegMask);
 
-PVRSRV_ERROR RGXPollReg64(const void *hPrivate,
-                          IMG_UINT32 ui32RegAddr,
-                          IMG_UINT64 ui64RegValue,
-                          IMG_UINT64 ui64RegMask);
+PVRSRV_ERROR RGXPollReg64(const void *hPrivate, IMG_UINT32 ui32RegAddr,
+			  IMG_UINT64 ui64RegValue, IMG_UINT64 ui64RegMask);
 
 /*!
 *******************************************************************************
@@ -349,9 +330,8 @@ PVRSRV_ERROR RGXPollReg64(const void *hPrivate,
  @Return         void
 
 ******************************************************************************/
-void RGXWaitCycles(const void *hPrivate,
-                   IMG_UINT32 ui32Cycles,
-                   IMG_UINT32 ui32WaitUs);
+void RGXWaitCycles(const void *hPrivate, IMG_UINT32 ui32Cycles,
+		   IMG_UINT32 ui32WaitUs);
 
 /*!
 *******************************************************************************
@@ -389,13 +369,11 @@ void RGXAcquireKernelMMUPC(const void *hPrivate, IMG_DEV_PHYADDR *psPCAddr);
 
 ******************************************************************************/
 #if defined(PDUMP)
-void RGXWriteKernelMMUPC32(const void *hPrivate,
-                           IMG_UINT32 ui32PCReg,
-                           IMG_UINT32 ui32PCRegAlignShift,
-                           IMG_UINT32 ui32PCRegShift,
-                           IMG_UINT32 ui32PCVal);
+void RGXWriteKernelMMUPC32(const void *hPrivate, IMG_UINT32 ui32PCReg,
+			   IMG_UINT32 ui32PCRegAlignShift,
+			   IMG_UINT32 ui32PCRegShift, IMG_UINT32 ui32PCVal);
 
-#else  /* defined(PDUMP) */
+#else /* defined(PDUMP) */
 #define RGXWriteKernelMMUPC32(priv, pcreg, alignshift, shift, pcval) \
 	RGXWriteReg32(priv, pcreg, pcval)
 #endif /* defined(PDUMP) */
@@ -471,7 +449,8 @@ IMG_UINT32 RGXGetDeviceCacheLineSize(const void *hPrivate);
  @Return          void
 
 ******************************************************************************/
-void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAddr);
+void RGXAcquireBootCodeAddr(const void *hPrivate,
+			    IMG_DEV_VIRTADDR *psBootCodeAddr);
 
 /*!
 *******************************************************************************
@@ -486,7 +465,8 @@ void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAd
  @Return:       Base host address of the RISCV firmware data
 
 ******************************************************************************/
-void *RGXCalculateHostFWDataAddress(const void *hPrivate, void *pvHostFWDataAddr);
+void *RGXCalculateHostFWDataAddress(const void *hPrivate,
+				    void *pvHostFWDataAddr);
 
 /*!
 *******************************************************************************
@@ -501,7 +481,8 @@ void *RGXCalculateHostFWDataAddress(const void *hPrivate, void *pvHostFWDataAddr
  @Return          void
 
 ******************************************************************************/
-void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAddr);
+void RGXAcquireBootDataAddr(const void *hPrivate,
+			    IMG_DEV_VIRTADDR *psBootDataAddr);
 
 /*!
 *******************************************************************************

@@ -81,8 +81,7 @@ typedef void *PMR_MMAP_DATA;
 
 /*! PMR factory type.
  */
-typedef enum _PMR_IMPL_TYPE_
-{
+typedef enum _PMR_IMPL_TYPE_ {
 	PMR_TYPE_NONE = 0,
 	PMR_TYPE_OSMEM,
 	PMR_TYPE_LMA,
@@ -169,11 +168,11 @@ typedef PVRSRV_ERROR (*PFN_UNLOCK_PHYS_ADDRESSES_FN)(PMR_IMPL_PRIVDATA pvPriv);
                 otherwise.
 */ /**************************************************************************/
 typedef PVRSRV_ERROR (*PFN_DEV_PHYS_ADDR_FN)(PMR_IMPL_PRIVDATA pvPriv,
-                      IMG_UINT32 ui32Log2PageSize,
-                      IMG_UINT32 ui32NumOfAddr,
-                      IMG_DEVMEM_OFFSET_T *puiOffset,
-                      IMG_BOOL *pbValid,
-                      IMG_DEV_PHYADDR *psDevAddrPtr);
+					     IMG_UINT32 ui32Log2PageSize,
+					     IMG_UINT32 ui32NumOfAddr,
+					     IMG_DEVMEM_OFFSET_T *puiOffset,
+					     IMG_BOOL *pbValid,
+					     IMG_DEV_PHYADDR *psDevAddrPtr);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN
@@ -202,12 +201,10 @@ typedef PVRSRV_ERROR (*PFN_DEV_PHYS_ADDR_FN)(PMR_IMPL_PRIVDATA pvPriv,
 @Return         PVRSRV_OK if the mapping was successful, an error code
                 otherwise.
 */ /**************************************************************************/
-typedef PVRSRV_ERROR (*PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN)(PMR_IMPL_PRIVDATA pvPriv,
-                      size_t uiOffset,
-                      size_t uiSize,
-                      void **ppvKernelAddressOut,
-                      IMG_HANDLE *phHandleOut,
-                      PMR_FLAGS_T ulFlags);
+typedef PVRSRV_ERROR (*PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN)(
+	PMR_IMPL_PRIVDATA pvPriv, size_t uiOffset, size_t uiSize,
+	void **ppvKernelAddressOut, IMG_HANDLE *phHandleOut,
+	PMR_FLAGS_T ulFlags);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_RELEASE_KERNEL_MAPPING_DATA_FN
@@ -226,7 +223,7 @@ typedef PVRSRV_ERROR (*PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN)(PMR_IMPL_PRIVDATA pvP
 @Return         None
 */ /**************************************************************************/
 typedef void (*PFN_RELEASE_KERNEL_MAPPING_DATA_FN)(PMR_IMPL_PRIVDATA pvPriv,
-              IMG_HANDLE hHandle);
+						   IMG_HANDLE hHandle);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_READ_BYTES_FN
@@ -251,10 +248,9 @@ typedef void (*PFN_RELEASE_KERNEL_MAPPING_DATA_FN)(PMR_IMPL_PRIVDATA pvPriv,
                 otherwise.
 */ /**************************************************************************/
 typedef PVRSRV_ERROR (*PFN_READ_BYTES_FN)(PMR_IMPL_PRIVDATA pvPriv,
-                      IMG_DEVMEM_OFFSET_T uiOffset,
-                      IMG_UINT8 *pcBuffer,
-                      size_t uiBufSz,
-                      size_t *puiNumBytes);
+					  IMG_DEVMEM_OFFSET_T uiOffset,
+					  IMG_UINT8 *pcBuffer, size_t uiBufSz,
+					  size_t *puiNumBytes);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_WRITE_BYTES_FN
@@ -279,10 +275,9 @@ typedef PVRSRV_ERROR (*PFN_READ_BYTES_FN)(PMR_IMPL_PRIVDATA pvPriv,
                 otherwise.
 */ /**************************************************************************/
 typedef PVRSRV_ERROR (*PFN_WRITE_BYTES_FN)(PMR_IMPL_PRIVDATA pvPriv,
-                      IMG_DEVMEM_OFFSET_T uiOffset,
-                      IMG_UINT8 *pcBuffer,
-                      size_t uiBufSz,
-                      size_t *puiNumBytes);
+					   IMG_DEVMEM_OFFSET_T uiOffset,
+					   IMG_UINT8 *pcBuffer, size_t uiBufSz,
+					   size_t *puiNumBytes);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_CHANGE_SPARSE_MEM_FN
@@ -319,12 +314,12 @@ typedef PVRSRV_ERROR (*PFN_WRITE_BYTES_FN)(PMR_IMPL_PRIVDATA pvPriv,
                 successfully, an error code otherwise.
 */ /**************************************************************************/
 typedef PVRSRV_ERROR (*PFN_CHANGE_SPARSE_MEM_FN)(PMR_IMPL_PRIVDATA pPriv,
-                      const PMR *psPMR,
-                      IMG_UINT32 ui32AllocPageCount,
-                      IMG_UINT32 *pai32AllocIndices,
-                      IMG_UINT32 ui32FreePageCount,
-                      IMG_UINT32 *pai32FreeIndices,
-                      IMG_UINT32 uiFlags);
+						 const PMR *psPMR,
+						 IMG_UINT32 ui32AllocPageCount,
+						 IMG_UINT32 *pai32AllocIndices,
+						 IMG_UINT32 ui32FreePageCount,
+						 IMG_UINT32 *pai32FreeIndices,
+						 IMG_UINT32 uiFlags);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN
@@ -360,13 +355,10 @@ typedef PVRSRV_ERROR (*PFN_CHANGE_SPARSE_MEM_FN)(PMR_IMPL_PRIVDATA pPriv,
 @Return         PVRSRV_OK if the page mappings were updated successfully, an
                 error code otherwise.
 */ /**************************************************************************/
-typedef PVRSRV_ERROR (*PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN)(PMR_IMPL_PRIVDATA pPriv,
-                      const PMR *psPMR,
-                      IMG_UINT64 sCpuVAddrBase,
-                      IMG_UINT32 ui32AllocPageCount,
-                      IMG_UINT32 *pai32AllocIndices,
-                      IMG_UINT32 ui32FreePageCount,
-                      IMG_UINT32 *pai32FreeIndices);
+typedef PVRSRV_ERROR (*PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN)(
+	PMR_IMPL_PRIVDATA pPriv, const PMR *psPMR, IMG_UINT64 sCpuVAddrBase,
+	IMG_UINT32 ui32AllocPageCount, IMG_UINT32 *pai32AllocIndices,
+	IMG_UINT32 ui32FreePageCount, IMG_UINT32 *pai32FreeIndices);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_MMAP_FN
@@ -385,9 +377,8 @@ typedef PVRSRV_ERROR (*PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN)(PMR_IMPL_PRIVDATA pPriv
 @Return         PVRSRV_OK if the mapping was successful, an error code
                 otherwise.
 */ /**************************************************************************/
-typedef PVRSRV_ERROR (*PFN_MMAP_FN)(PMR_IMPL_PRIVDATA pPriv,
-                                    PMR *psPMR,
-                                    PMR_MMAP_DATA pMMapData);
+typedef PVRSRV_ERROR (*PFN_MMAP_FN)(PMR_IMPL_PRIVDATA pPriv, PMR *psPMR,
+				    PMR_MMAP_DATA pMMapData);
 
 /*************************************************************************/ /*!
 @Brief          Callback function type PFN_FINALIZE_FN
@@ -438,40 +429,40 @@ typedef void (*PFN_RELEASE_PMR_FACTORY_LOCK_FN)(void);
 /*! PMR factory callback table.
  */
 struct _PMR_IMPL_FUNCTAB_ {
-    /*! Callback function pointer, see ::PFN_LOCK_PHYS_ADDRESSES_FN */
-    PFN_LOCK_PHYS_ADDRESSES_FN pfnLockPhysAddresses;
-    /*! Callback function pointer, see ::PFN_UNLOCK_PHYS_ADDRESSES_FN */
-    PFN_UNLOCK_PHYS_ADDRESSES_FN pfnUnlockPhysAddresses;
+	/*! Callback function pointer, see ::PFN_LOCK_PHYS_ADDRESSES_FN */
+	PFN_LOCK_PHYS_ADDRESSES_FN pfnLockPhysAddresses;
+	/*! Callback function pointer, see ::PFN_UNLOCK_PHYS_ADDRESSES_FN */
+	PFN_UNLOCK_PHYS_ADDRESSES_FN pfnUnlockPhysAddresses;
 
-    /*! Callback function pointer, see ::PFN_DEV_PHYS_ADDR_FN */
-    PFN_DEV_PHYS_ADDR_FN pfnDevPhysAddr;
+	/*! Callback function pointer, see ::PFN_DEV_PHYS_ADDR_FN */
+	PFN_DEV_PHYS_ADDR_FN pfnDevPhysAddr;
 
-    /*! Callback function pointer, see ::PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN */
-    PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN pfnAcquireKernelMappingData;
-    /*! Callback function pointer, see ::PFN_RELEASE_KERNEL_MAPPING_DATA_FN */
-    PFN_RELEASE_KERNEL_MAPPING_DATA_FN pfnReleaseKernelMappingData;
+	/*! Callback function pointer, see ::PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN */
+	PFN_ACQUIRE_KERNEL_MAPPING_DATA_FN pfnAcquireKernelMappingData;
+	/*! Callback function pointer, see ::PFN_RELEASE_KERNEL_MAPPING_DATA_FN */
+	PFN_RELEASE_KERNEL_MAPPING_DATA_FN pfnReleaseKernelMappingData;
 
-    /*! Callback function pointer, see ::PFN_READ_BYTES_FN */
-    PFN_READ_BYTES_FN pfnReadBytes;
-    /*! Callback function pointer, see ::PFN_WRITE_BYTES_FN */
-    PFN_WRITE_BYTES_FN pfnWriteBytes;
+	/*! Callback function pointer, see ::PFN_READ_BYTES_FN */
+	PFN_READ_BYTES_FN pfnReadBytes;
+	/*! Callback function pointer, see ::PFN_WRITE_BYTES_FN */
+	PFN_WRITE_BYTES_FN pfnWriteBytes;
 
-    /*! Callback function pointer, see ::PFN_CHANGE_SPARSE_MEM_FN */
-    PFN_CHANGE_SPARSE_MEM_FN pfnChangeSparseMem;
-    /*! Callback function pointer, see ::PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN */
-    PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN pfnChangeSparseMemCPUMap;
+	/*! Callback function pointer, see ::PFN_CHANGE_SPARSE_MEM_FN */
+	PFN_CHANGE_SPARSE_MEM_FN pfnChangeSparseMem;
+	/*! Callback function pointer, see ::PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN */
+	PFN_CHANGE_SPARSE_MEM_CPU_MAP_FN pfnChangeSparseMemCPUMap;
 
-    /*! Callback function pointer, see ::PFN_MMAP_FN */
-    PFN_MMAP_FN pfnMMap;
+	/*! Callback function pointer, see ::PFN_MMAP_FN */
+	PFN_MMAP_FN pfnMMap;
 
-    /*! Callback function pointer, see ::PFN_FINALIZE_FN */
-    PFN_FINALIZE_FN pfnFinalize;
+	/*! Callback function pointer, see ::PFN_FINALIZE_FN */
+	PFN_FINALIZE_FN pfnFinalize;
 
-    /*! Callback function pointer, see ::PFN_ACQUIRE_PMR_FACTORY_LOCK_FN */
-    PFN_ACQUIRE_PMR_FACTORY_LOCK_FN pfnGetPMRFactoryLock;
+	/*! Callback function pointer, see ::PFN_ACQUIRE_PMR_FACTORY_LOCK_FN */
+	PFN_ACQUIRE_PMR_FACTORY_LOCK_FN pfnGetPMRFactoryLock;
 
-    /*! Callback function pointer, see ::PFN_RELEASE_PMR_FACTORY_LOCK_FN */
-    PFN_RELEASE_PMR_FACTORY_LOCK_FN pfnReleasePMRFactoryLock;
+	/*! Callback function pointer, see ::PFN_RELEASE_PMR_FACTORY_LOCK_FN */
+	PFN_RELEASE_PMR_FACTORY_LOCK_FN pfnReleasePMRFactoryLock;
 };
 
 /*! PMR factory callback table.

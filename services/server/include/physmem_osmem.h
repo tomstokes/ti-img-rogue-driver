@@ -108,18 +108,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 @Return         PVRSRV_OK on success, a failure code otherwise.
 */ /**************************************************************************/
 PVRSRV_ERROR
-PhysmemNewOSRamBackedPMR(PHYS_HEAP *psPhysHeap,
-                         CONNECTION_DATA *psConnection,
-                         IMG_DEVMEM_SIZE_T uiSize,
-                         IMG_UINT32 ui32NumPhysChunks,
-                         IMG_UINT32 ui32NumVirtChunks,
-                         IMG_UINT32 *pui32MappingTable,
-                         IMG_UINT32 uiLog2PageSize,
-                         PVRSRV_MEMALLOCFLAGS_T uiFlags,
-                         const IMG_CHAR *pszAnnotation,
-                         IMG_PID uiPid,
-                         PMR **ppsPMROut,
-                         IMG_UINT32 ui32PDumpFlags);
+PhysmemNewOSRamBackedPMR(PHYS_HEAP *psPhysHeap, CONNECTION_DATA *psConnection,
+			 IMG_DEVMEM_SIZE_T uiSize, IMG_UINT32 ui32NumPhysChunks,
+			 IMG_UINT32 ui32NumVirtChunks,
+			 IMG_UINT32 *pui32MappingTable,
+			 IMG_UINT32 uiLog2PageSize,
+			 PVRSRV_MEMALLOCFLAGS_T uiFlags,
+			 const IMG_CHAR *pszAnnotation, IMG_PID uiPid,
+			 PMR **ppsPMROut, IMG_UINT32 ui32PDumpFlags);
 
 /*************************************************************************/ /*!
 @Function       PhysmemGetOSRamMemStats
@@ -130,7 +126,7 @@ PhysmemNewOSRamBackedPMR(PHYS_HEAP *psPhysHeap,
 @Return         None.
 */ /**************************************************************************/
 void PhysmemGetOSRamMemStats(PHEAP_IMPL_DATA pvImplData,
-                            IMG_UINT64 *pui64TotalSize,
-                            IMG_UINT64 *pui64FreeSize);
+			     IMG_UINT64 *pui64TotalSize,
+			     IMG_UINT64 *pui64FreeSize);
 
 #endif /* PHYSMEM_OSMEM_H */

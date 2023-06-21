@@ -73,18 +73,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_error.h"
 #include "pvrsrv.h"
 
-#define HTBLOGK(SF, args...) do { if (HTB_GROUP_ENABLED(SF)) HTBLogSimple(SF, ## args); } while (0)
+#define HTBLOGK(SF, args...)                      \
+	do {                                      \
+		if (HTB_GROUP_ENABLED(SF))        \
+			HTBLogSimple(SF, ##args); \
+	} while (0)
 
 /* macros to cast 64 or 32-bit pointers into 32-bit integer components for Host Trace */
-#define HTBLOG_PTR_BITS_HIGH(p) ((IMG_UINT32)((((IMG_UINT64)((uintptr_t)p))>>32)&0xffffffff))
-#define HTBLOG_PTR_BITS_LOW(p)  ((IMG_UINT32)(((IMG_UINT64)((uintptr_t)p))&0xffffffff))
+#define HTBLOG_PTR_BITS_HIGH(p) \
+	((IMG_UINT32)((((IMG_UINT64)((uintptr_t)p)) >> 32) & 0xffffffff))
+#define HTBLOG_PTR_BITS_LOW(p) \
+	((IMG_UINT32)(((IMG_UINT64)((uintptr_t)p)) & 0xffffffff))
 
 /* macros to cast 64-bit integers into 32-bit integer components for Host Trace */
-#define HTBLOG_U64_BITS_HIGH(u) ((IMG_UINT32)((u>>32)&0xffffffff))
-#define HTBLOG_U64_BITS_LOW(u)  ((IMG_UINT32)(u&0xffffffff))
+#define HTBLOG_U64_BITS_HIGH(u) ((IMG_UINT32)((u >> 32) & 0xffffffff))
+#define HTBLOG_U64_BITS_LOW(u) ((IMG_UINT32)(u & 0xffffffff))
 
 /* Host Trace Buffer name */
-#define HTB_STREAM_NAME	"PVRHTBuffer"
+#define HTB_STREAM_NAME "PVRHTBuffer"
 
 /************************************************************************/ /*!
  @Function      HTBInit
@@ -127,12 +133,9 @@ HTBDeInit(void);
 */ /**************************************************************************/
 PVRSRV_ERROR
 HTBControlKM(const IMG_UINT32 ui32NumFlagGroups,
-			 const IMG_UINT32 *aui32GroupEnable,
-			 const IMG_UINT32 ui32LogLevel,
-			 const IMG_UINT32 ui32EnablePID,
-			 const HTB_LOGMODE_CTRL eLogMode,
-			 const HTB_OPMODE_CTRL eOpMode);
-
+	     const IMG_UINT32 *aui32GroupEnable, const IMG_UINT32 ui32LogLevel,
+	     const IMG_UINT32 ui32EnablePID, const HTB_LOGMODE_CTRL eLogMode,
+	     const HTB_OPMODE_CTRL eOpMode);
 
 /*************************************************************************/ /*!
  @Function      HTBSyncPartitionMarker
@@ -141,8 +144,7 @@ HTBControlKM(const IMG_UINT32 ui32NumFlagGroups,
  @Input         ui32Marker      Marker value
 
 */ /**************************************************************************/
-void
-HTBSyncPartitionMarker(const IMG_UINT32 ui32Marker);
+void HTBSyncPartitionMarker(const IMG_UINT32 ui32Marker);
 
 /*************************************************************************/ /*!
  @Function      HTBSyncPartitionMarkerRpt
@@ -155,11 +157,10 @@ HTBSyncPartitionMarker(const IMG_UINT32 ui32Marker);
  @Input         ui32ClkSpeed    previous Clockspeed
 
 */ /**************************************************************************/
-void
-HTBSyncPartitionMarkerRepeat(const IMG_UINT32 ui32Marker,
-							 const IMG_UINT64 ui64SyncOSTS,
-							 const IMG_UINT64 ui64SyncCRTS,
-							 const IMG_UINT32 ui32ClkSpeed);
+void HTBSyncPartitionMarkerRepeat(const IMG_UINT32 ui32Marker,
+				  const IMG_UINT64 ui64SyncOSTS,
+				  const IMG_UINT64 ui64SyncCRTS,
+				  const IMG_UINT32 ui32ClkSpeed);
 
 /*************************************************************************/ /*!
  @Function      HTBSyncScale
@@ -176,9 +177,8 @@ HTBSyncPartitionMarkerRepeat(const IMG_UINT32 ui32Marker,
  @Input         ui32CalcClkSpd  Calculated clock speed
 
 */ /**************************************************************************/
-void
-HTBSyncScale(const IMG_BOOL bLogValues, const IMG_UINT64 ui64OSTS,
-			 const IMG_UINT64 ui64CRTS, const IMG_UINT32 ui32CalcClkSpd);
+void HTBSyncScale(const IMG_BOOL bLogValues, const IMG_UINT64 ui64OSTS,
+		  const IMG_UINT64 ui64CRTS, const IMG_UINT32 ui32CalcClkSpd);
 
 /*************************************************************************/ /*!
  @Function      HTBLogSimple
@@ -191,13 +191,12 @@ HTBSyncScale(const IMG_BOOL bLogValues, const IMG_UINT64 ui64OSTS,
  @Return        PVRSRV_OK       Success.
 
 */ /**************************************************************************/
-IMG_INTERNAL PVRSRV_ERROR
-HTBLogSimple(IMG_UINT32 SF, ...);
+IMG_INTERNAL PVRSRV_ERROR HTBLogSimple(IMG_UINT32 SF, ...);
 
 /*  DEBUG log group enable */
 #if !defined(HTB_DEBUG_LOG_GROUP)
-#undef HTB_LOG_TYPE_DBG    /* No trace statements in this log group should be checked in */
-#define HTB_LOG_TYPE_DBG    __BUILDERROR__
+#undef HTB_LOG_TYPE_DBG /* No trace statements in this log group should be checked in */
+#define HTB_LOG_TYPE_DBG __BUILDERROR__
 #endif
 
 /*************************************************************************/ /*!

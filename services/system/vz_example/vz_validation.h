@@ -49,8 +49,10 @@ PVRSRV_ERROR CreateMPUWatchdogThread(IMG_HANDLE *phValidationData);
 void DestroyMPUWatchdogThread(IMG_HANDLE hValidationData);
 
 void SysInitValidation(IMG_HANDLE hSysData,
-                       IMG_UINT64 aui64OSidMin[GPUVIRT_VALIDATION_NUM_REGIONS][GPUVIRT_VALIDATION_NUM_OS],
-                       IMG_UINT64 aui64OSidMax[GPUVIRT_VALIDATION_NUM_REGIONS][GPUVIRT_VALIDATION_NUM_OS]);
+		       IMG_UINT64 aui64OSidMin[GPUVIRT_VALIDATION_NUM_REGIONS]
+					      [GPUVIRT_VALIDATION_NUM_OS],
+		       IMG_UINT64 aui64OSidMax[GPUVIRT_VALIDATION_NUM_REGIONS]
+					      [GPUVIRT_VALIDATION_NUM_OS]);
 #endif
 
 #endif /* __VZ_VALIDATION_H__ */

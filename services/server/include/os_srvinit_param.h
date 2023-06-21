@@ -58,24 +58,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SrvInitParamClose(pvState) ((void)(pvState))
 
 #define SrvInitParamGetBOOL(device, state, name, value) \
-	((void) pvr_apphint_get_bool(device, APPHINT_ID_ ## name, &value))
+	((void)pvr_apphint_get_bool(device, APPHINT_ID_##name, &value))
 
 #define SrvInitParamGetUINT32(device, state, name, value) \
-	((void) pvr_apphint_get_uint32(device, APPHINT_ID_ ## name, &value))
+	((void)pvr_apphint_get_uint32(device, APPHINT_ID_##name, &value))
 
 #define SrvInitParamGetUINT64(device, state, name, value) \
-	((void) pvr_apphint_get_uint64(device, APPHINT_ID_ ## name, &value))
+	((void)pvr_apphint_get_uint64(device, APPHINT_ID_##name, &value))
 
 #define SrvInitParamGetSTRING(device, state, name, buffer, size) \
-	((void) pvr_apphint_get_string(device, APPHINT_ID_ ## name, buffer, size))
+	((void)pvr_apphint_get_string(device, APPHINT_ID_##name, buffer, size))
 
 #define SrvInitParamGetUINT32BitField(device, state, name, value) \
-	((void) pvr_apphint_get_uint32(device, APPHINT_ID_ ## name, &value))
+	((void)pvr_apphint_get_uint32(device, APPHINT_ID_##name, &value))
 
 #define SrvInitParamGetUINT32List(device, state, name, value) \
-	((void) pvr_apphint_get_uint32(device, APPHINT_ID_ ## name, &value))
+	((void)pvr_apphint_get_uint32(device, APPHINT_ID_##name, &value))
 
-#else	/* defined(__linux__) && defined(__KERNEL__) */
+#else /* defined(__linux__) && defined(__KERNEL__) */
 
 #if defined(__cplusplus)
 extern "C" {
@@ -85,10 +85,9 @@ extern "C" {
 #include "img_types.h"
 
 /*! Lookup item. */
-typedef struct
-{
-	const IMG_CHAR *pszValue;       /*!< looked up name */
-	IMG_UINT32 ui32Value;           /*!< looked up value */
+typedef struct {
+	const IMG_CHAR *pszValue; /*!< looked up name */
+	IMG_UINT32 ui32Value; /*!< looked up value */
 } SRV_INIT_PARAM_UINT32_LOOKUP;
 
 /*************************************************************************/ /*!
@@ -132,25 +131,21 @@ void SrvInitParamClose(void *pvState);
                                     if not found
 
 */ /**************************************************************************/
-void _SrvInitParamGetBOOL(
-	void *pvState,
-	const IMG_CHAR *pszName,
-	const IMG_BOOL *pbDefault,
-	IMG_BOOL *pbValue
-);
+void _SrvInitParamGetBOOL(void *pvState, const IMG_CHAR *pszName,
+			  const IMG_BOOL *pbDefault, IMG_BOOL *pbValue);
 
 /*! Get the BOOL value for parameter 'name' from the parameter resource store
  *  attached to 'state'. */
 #define SrvInitParamGetBOOL(device, state, name, value) \
-		_SrvInitParamGetBOOL(state, # name, & __SrvInitParam_ ## name, &(value))
+	_SrvInitParamGetBOOL(state, #name, &__SrvInitParam_##name, &(value))
 
 /*! Initialise FLAG type parameter identified by 'name'. */
 #define SrvInitParamInitFLAG(name, defval, unused) \
-	static const IMG_BOOL __SrvInitParam_ ## name = defval;
+	static const IMG_BOOL __SrvInitParam_##name = defval;
 
 /*! Initialise BOOL type parameter identified by 'name'. */
 #define SrvInitParamInitBOOL(name, defval, unused) \
-	static const IMG_BOOL __SrvInitParam_ ## name = defval;
+	static const IMG_BOOL __SrvInitParam_##name = defval;
 
 /*************************************************************************/ /*!
 @Brief          _SrvInitParamGetUINT32
@@ -168,29 +163,26 @@ void _SrvInitParamGetBOOL(
                                     'pui32Default' if not found
 
 */ /**************************************************************************/
-void _SrvInitParamGetUINT32(
-	void *pvState,
-	const IMG_CHAR *pszName,
-	const IMG_UINT32 *pui32Default,
-	IMG_UINT32 *pui32Value
-);
+void _SrvInitParamGetUINT32(void *pvState, const IMG_CHAR *pszName,
+			    const IMG_UINT32 *pui32Default,
+			    IMG_UINT32 *pui32Value);
 
 /*! Get the UINT32 value for parameter 'name' from the parameter resource store
  *  attached to 'state'. */
 #define SrvInitParamGetUINT32(device, state, name, value) \
-		_SrvInitParamGetUINT32(state, # name, & __SrvInitParam_ ## name, &(value))
+	_SrvInitParamGetUINT32(state, #name, &__SrvInitParam_##name, &(value))
 
 /*! Initialise UINT32 type parameter identified by 'name'. */
 #define SrvInitParamInitUINT32(name, defval, unused) \
-	static const IMG_UINT32 __SrvInitParam_ ## name = defval;
+	static const IMG_UINT32 __SrvInitParam_##name = defval;
 
 /*! Initialise UINT64 type parameter identified by 'name'. */
 #define SrvInitParamInitUINT64(name, defval, unused) \
-	static const IMG_UINT64 __SrvInitParam_ ## name = defval;
+	static const IMG_UINT64 __SrvInitParam_##name = defval;
 
 /*! @cond Doxygen_Suppress */
 #define SrvInitParamUnreferenced(name) \
-		PVR_UNREFERENCED_PARAMETER( __SrvInitParam_ ## name )
+	PVR_UNREFERENCED_PARAMETER(__SrvInitParam_##name)
 /*! @endcond */
 
 /*************************************************************************/ /*!
@@ -213,28 +205,25 @@ void _SrvInitParamGetUINT32(
 @Output         puiValue            Value of bitfield or 'uiDefault' if
                                     parameter not found
 */ /**************************************************************************/
-void _SrvInitParamGetUINT32BitField(
-	void *pvState,
-	const IMG_CHAR *pszBaseName,
-	IMG_UINT32 uiDefault,
-	const SRV_INIT_PARAM_UINT32_LOOKUP *psLookup,
-	IMG_UINT32 uiSize,
-	IMG_UINT32 *puiValue
-);
+void _SrvInitParamGetUINT32BitField(void *pvState, const IMG_CHAR *pszBaseName,
+				    IMG_UINT32 uiDefault,
+				    const SRV_INIT_PARAM_UINT32_LOOKUP *psLookup,
+				    IMG_UINT32 uiSize, IMG_UINT32 *puiValue);
 
 /*! Initialise UINT32 bitfield type parameter identified by 'name' with
  *  'inival' value and 'lookup' look up array. */
-#define SrvInitParamInitUINT32Bitfield(name, inival, lookup) \
-	static IMG_UINT32 __SrvInitParam_ ## name = inival; \
-	static SRV_INIT_PARAM_UINT32_LOOKUP * \
-		__SrvInitParamLookup_ ## name = &lookup[0]; \
-	static const IMG_UINT32 __SrvInitParamSize_ ## name = \
-					ARRAY_SIZE(lookup);
+#define SrvInitParamInitUINT32Bitfield(name, inival, lookup)               \
+	static IMG_UINT32 __SrvInitParam_##name = inival;                  \
+	static SRV_INIT_PARAM_UINT32_LOOKUP *__SrvInitParamLookup_##name = \
+		&lookup[0];                                                \
+	static const IMG_UINT32 __SrvInitParamSize_##name = ARRAY_SIZE(lookup);
 
 /*! Get the UINT32 bitfield value for parameter 'name' from the parameter
  *  resource store attached to 'state'. */
-#define SrvInitParamGetUINT32BitField(device, state, name, value) \
-		_SrvInitParamGetUINT32BitField(state, # name, __SrvInitParam_ ## name, __SrvInitParamLookup_ ## name, __SrvInitParamSize_ ## name, &(value))
+#define SrvInitParamGetUINT32BitField(device, state, name, value)           \
+	_SrvInitParamGetUINT32BitField(state, #name, __SrvInitParam_##name, \
+				       __SrvInitParamLookup_##name,         \
+				       __SrvInitParamSize_##name, &(value))
 
 /*************************************************************************/ /*!
 @Brief          _SrvInitParamGetUINT32List
@@ -258,28 +247,25 @@ void _SrvInitParamGetUINT32BitField(
                                     'uiDefault' if parameter not found
 
 */ /**************************************************************************/
-void _SrvInitParamGetUINT32List(
-	void *pvState,
-	const IMG_CHAR *pszName,
-	IMG_UINT32 uiDefault,
-	const SRV_INIT_PARAM_UINT32_LOOKUP *psLookup,
-	IMG_UINT32 uiSize,
-	IMG_UINT32 *puiValue
-);
+void _SrvInitParamGetUINT32List(void *pvState, const IMG_CHAR *pszName,
+				IMG_UINT32 uiDefault,
+				const SRV_INIT_PARAM_UINT32_LOOKUP *psLookup,
+				IMG_UINT32 uiSize, IMG_UINT32 *puiValue);
 
 /*! Get the UINT32 list value for parameter 'name' from the parameter
  *  resource store attached to 'state'. */
-#define SrvInitParamGetUINT32List(device, state, name, value) \
-		_SrvInitParamGetUINT32List(state, # name, __SrvInitParam_ ## name, __SrvInitParamLookup_ ## name, __SrvInitParamSize_ ## name, &(value))
+#define SrvInitParamGetUINT32List(device, state, name, value)           \
+	_SrvInitParamGetUINT32List(state, #name, __SrvInitParam_##name, \
+				   __SrvInitParamLookup_##name,         \
+				   __SrvInitParamSize_##name, &(value))
 
 /*! Initialise UINT32 list type parameter identified by 'name' with
  *  'defval' default value and 'lookup' look up list. */
-#define SrvInitParamInitUINT32List(name, defval, lookup) \
-	static IMG_UINT32 __SrvInitParam_ ## name = defval; \
-	static SRV_INIT_PARAM_UINT32_LOOKUP * \
-		__SrvInitParamLookup_ ## name = &lookup[0]; \
-	static const IMG_UINT32 __SrvInitParamSize_ ## name = \
-					ARRAY_SIZE(lookup);
+#define SrvInitParamInitUINT32List(name, defval, lookup)                   \
+	static IMG_UINT32 __SrvInitParam_##name = defval;                  \
+	static SRV_INIT_PARAM_UINT32_LOOKUP *__SrvInitParamLookup_##name = \
+		&lookup[0];                                                \
+	static const IMG_UINT32 __SrvInitParamSize_##name = ARRAY_SIZE(lookup);
 
 /*************************************************************************/ /*!
 @Brief          _SrvInitParamGetSTRING
@@ -301,23 +287,20 @@ void _SrvInitParamGetUINT32List(
                                     set within 'pvState'
 
 */ /**************************************************************************/
-void _SrvInitParamGetSTRING(
-	void *pvState,
-	const IMG_CHAR *pszName,
-	const IMG_CHAR *psDefault,
-	IMG_CHAR *pBuffer,
-	size_t size
-);
+void _SrvInitParamGetSTRING(void *pvState, const IMG_CHAR *pszName,
+			    const IMG_CHAR *psDefault, IMG_CHAR *pBuffer,
+			    size_t size);
 
 /*! Initialise STRING type parameter identified by 'name' with 'defval' default
  *  value. */
 #define SrvInitParamInitSTRING(name, defval, unused) \
-	static const IMG_CHAR *__SrvInitParam_ ## name = defval;
+	static const IMG_CHAR *__SrvInitParam_##name = defval;
 
 /*! Get the STRING value for parameter 'name' from the parameter resource store
  *  attached to 'state'. */
-#define SrvInitParamGetSTRING(device, state, name, buffer, size) \
-		_SrvInitParamGetSTRING(state, # name,  __SrvInitParam_ ## name, buffer, size)
+#define SrvInitParamGetSTRING(device, state, name, buffer, size)            \
+	_SrvInitParamGetSTRING(state, #name, __SrvInitParam_##name, buffer, \
+			       size)
 
 #if defined(__cplusplus)
 }

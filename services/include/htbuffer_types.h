@@ -55,18 +55,19 @@ extern "C" {
 #include "htbuffer_sf.h"
 
 /* The group flags array of ints large enough to store all the group flags */
-#define HTB_FLAG_NUM_EL (((HTB_GROUP_DBG-1) / HTB_FLAG_NUM_BITS_IN_EL) + 1)
+#define HTB_FLAG_NUM_EL (((HTB_GROUP_DBG - 1) / HTB_FLAG_NUM_BITS_IN_EL) + 1)
 extern IMG_INTERNAL HTB_FLAG_EL_T g_auiHTBGroupEnable[HTB_FLAG_NUM_EL];
 
-#define HTB_GROUP_ENABLED(SF) (g_auiHTBGroupEnable[HTB_LOG_GROUP_FLAG_GROUP(HTB_SF_GID(SF))] & HTB_LOG_GROUP_FLAG(HTB_SF_GID(SF)))
+#define HTB_GROUP_ENABLED(SF)                                            \
+	(g_auiHTBGroupEnable[HTB_LOG_GROUP_FLAG_GROUP(HTB_SF_GID(SF))] & \
+	 HTB_LOG_GROUP_FLAG(HTB_SF_GID(SF)))
 
 /*************************************************************************/ /*!
  Host Trace Buffer operation mode
  Care must be taken if changing this enum to ensure the MapFlags[] array
  in htbserver.c is kept in-step.
 */ /**************************************************************************/
-typedef enum
-{
+typedef enum {
 	/*! Undefined operation mode */
 	HTB_OPMODE_UNDEF = 0,
 
@@ -88,12 +89,10 @@ typedef enum
 	HTB_OPMODE_LAST = HTB_OPMODE_BLOCK
 } HTB_OPMODE_CTRL;
 
-
 /*************************************************************************/ /*!
  Host Trace Buffer log mode control
 */ /**************************************************************************/
-typedef enum
-{
+typedef enum {
 	/*! Undefined log mode, used if update is not applied */
 	HTB_LOGMODE_UNDEF = 0,
 
@@ -105,7 +104,6 @@ typedef enum
 
 	HTB_LOGMODE_LAST = HTB_LOGMODE_RESTRICTEDPID
 } HTB_LOGMODE_CTRL;
-
 
 #if defined(__cplusplus)
 }
