@@ -369,6 +369,9 @@ static void RGXDumpFirmwareTraceLines(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 	RGXFwSharedMemCacheOpValue(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID],
 				   INVALIDATE);
+	RGXFwSharedMemCacheOpExec(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].pui32TraceBuffer,
+	                          psRGXFWIfTraceBufCtl->ui32TraceBufSizeInDWords * sizeof(IMG_UINT32),
+	                          PVRSRV_CACHE_OP_INVALIDATE);
 
 	pui32FWWrapCount =
 		&(psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].ui32WrapCount);
@@ -598,7 +601,7 @@ void RGXDumpFirmwareTraceBinary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	IMG_CHAR *pszLine;
 
 	RGXFwSharedMemCacheOpExec(
-		&psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID],
+		psRGXFWIfTraceBufCtl->sTraceBuf[ui32TID].pui32TraceBuffer,
 		psRGXFWIfTraceBufCtl->ui32TraceBufSizeInDWords *
 			sizeof(IMG_UINT32),
 		PVRSRV_CACHE_OP_INVALIDATE);
